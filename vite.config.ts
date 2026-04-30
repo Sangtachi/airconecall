@@ -153,7 +153,17 @@ export default defineConfig(({ mode }) => {
   },
 
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  // dev·preview 공통: /api → Nest (`npm run preview` 에는 preview.proxy 가 없으면 POST /api/... 가
+  // 정적 호스트로만 가서 `Cannot POST /api/...` 가 난다.)
   server: {
+    proxy: {
+      '/api': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
     proxy: {
       '/api': {
         target: apiProxyTarget,

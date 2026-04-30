@@ -96,7 +96,10 @@ export async function submitRequest(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch {
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.warn('[submitRequest] fetch 실패:', e);
+    }
     throw new Error('인터넷 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
   }
 

@@ -14,7 +14,11 @@ async function readEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
     });
-  } catch {
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      // fetch 가 CORS/연결 등으로 reject 될 때만 여기로 옴 (콘솔로 원인 확인)
+      console.warn('[catalogApi] fetch 실패:', path, e);
+    }
     throw new Error('인터넷 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
   }
   let json: { ok?: boolean; data?: T; error?: unknown };
@@ -46,46 +50,4 @@ export interface ServiceProductDto {
 
 export function fetchInstallProducts(): Promise<ServiceProductDto[]> {
   return readEnvelope<ServiceProductDto[]>('/api/service-products?serviceType=install');
-}
-
-export interface OrderDraftDto {
-  id: string;
-  orderNo: string;
-  productId: string;
-  productTotalPrice: number;
-  paymentStatus: string;
-  orderStatus: string;
-  scheduleType: string;
-  customerName?: string;
-}
-
-export function createOrderDraft(body: {
-  productId: string;
-  scheduleType: 'same_day' | 'reservation';
-  customerName: string;
-  customerPhone: string;
-  addressSummary: string;
-  customerMemo?: string;
-}): Promise<OrderDraftDto> {
-  return readEnvelope<OrderDraftDto>('/api/orders', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-}
-
-export async function mockConfirmPayment(orderId: string): Promise<OrderDraftDto> {
-  return readEnvelope<OrderDraftDto>('/api/payments/mock-confirm', {
-    method: 'POST',
-    body: JSON.stringify({ orderId }),
-  });
-}
-
-/** 백엔드에서 허용할 때만 true. 연결 실패 시 null. */
-export async function fetchMockPaymentsAllowed(): Promise<boolean | null> {
-  try {
-    const v = await readEnvelope<{ mockPaymentsAllowed: boolean }>('/api/payments/mock-health');
-    return !!v.mockPaymentsAllowed;
-  } catch {
-    return null;
-  }
 }
