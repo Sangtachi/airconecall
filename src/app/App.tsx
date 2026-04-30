@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User, Ticket } from 'lucide-react';
-import { submitRequest } from '@/lib/api';
+import { markEmergencyLeadTimeout, submitRequest } from '@/lib/api';
 import { AppShell } from '@/app/components/AppShell';
 import { MemberBenefitsDialog } from '@/app/components/MemberBenefitsDialog';
 import { MemberDashboardPage } from '@/app/components/MemberDashboardPage';
@@ -14,10 +14,10 @@ import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
 import { InstallCatalogCheckout } from '@/app/components/InstallCatalogCheckout';
 
-/** 1차 15분 거리 검색(초) → 그다음 30분 거리 검색 시작 시점까지의 경과(초) */
-const MATCH_SWITCH_TO_WIDE_AT = 15;
-/** 접수 완료(대기) 화면으로 전환까지 총 경과(초) */
-const MATCH_END_AT = 30;
+/** 1차 근처 검색 구간 종료까지 경과(초) — 이후 2차(광역) 검색 */
+const MATCH_SWITCH_TO_WIDE_AT = 20;
+/** 웨잇리스트 화면 전환까지 총 경과(초). 서버 매칭 기본 타임아웃과 맞춤 */
+const MATCH_END_AT = 40;
 
 export default function App() {
   const [step, setStep] = useState<'home' | 'request' | 'memberDashboard'>('home');
@@ -112,6 +112,7 @@ export default function App() {
 function MatchingScreen({
   stage,
   elapsedTime,
+  matchingDeadlineIso,
   formData,
   onCancel,
   signupBookingRef,
@@ -121,6 +122,7 @@ function MatchingScreen({
 }: {
   stage: string;
   elapsedTime: number;
+  matchingDeadlineIso?: string | null;
   formData: any;
   onCancel: () => void;
   signupBookingRef?: string;
@@ -128,6 +130,9 @@ function MatchingScreen({
   onOpenSignup: (bookingRef?: string) => void;
   onOpenManage: () => void;
 }) {
+  const deadlineMs = matchingDeadlineIso ? Date.parse(matchingDeadlineIso) : NaN;
+  const serverRemainSec =
+    Number.isFinite(deadlineMs) ? Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000)) : null;
   return (
     <div className="flex w-full min-h-full flex-col bg-slate-50/90">
       {/* Header — 스크롤 시에도 상단 고정 */}
@@ -154,7 +159,12 @@ function MatchingScreen({
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
             <span>매칭 진행 중</span>
-            <span>{elapsedTime}초</span>
+            <span>
+              {elapsedTime}초
+              {serverRemainSec != null && (
+                <span className="ml-2 text-[11px] text-gray-400">· 서버 종료까지 ~{serverRemainSec}초</span>
+              )}
+            </span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-gray-200">
             <div
@@ -629,6 +639,7 @@ function RequestPage({
   const [submitted, setSubmitted] = useState(false);
   const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [matchingDeadlineIso, setMatchingDeadlineIso] = useState<string | undefined>();
   const [postSubmitSource, setPostSubmitSource] = useState<'contact' | 'member' | null>(null);
   const handledSignupEventRef = useRef(0);
 
@@ -638,7 +649,12 @@ function RequestPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitRequest({ ...formData, submittedAt: new Date().toISOString() });
+    const lead = await submitRequest({
+      ...formData,
+      submittedAt: new Date().toISOString(),
+      matchingTimeoutSeconds: MATCH_END_AT
+    });
+    setMatchingDeadlineIso(lead?.deadlineIso);
     setSubmitted(true);
     setElapsedTime(0);
     setMatchingStage('searching15');
@@ -655,6 +671,7 @@ function RequestPage({
         if (newTime === MATCH_SWITCH_TO_WIDE_AT) {
           setMatchingStage('searching30');
         } else if (newTime === MATCH_END_AT) {
+          void markEmergencyLeadTimeout();
           setMatchingStage('waitlist');
         }
 
@@ -713,6 +730,7 @@ function RequestPage({
       <MatchingScreen
         stage="15분"
         elapsedTime={elapsedTime}
+        matchingDeadlineIso={matchingDeadlineIso}
         formData={formData}
         onCancel={onBack}
         {...memberHeaderCallbacks}
@@ -725,6 +743,7 @@ function RequestPage({
       <MatchingScreen
         stage="30분"
         elapsedTime={elapsedTime}
+        matchingDeadlineIso={matchingDeadlineIso}
         formData={formData}
         onCancel={onBack}
         {...memberHeaderCallbacks}
@@ -738,7 +757,6 @@ function RequestPage({
         <div className="sticky top-0 z-10 flex w-full shrink-0 items-center justify-end gap-3 border-b border-gray-200/80 bg-white/95 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top,0px))] shadow-sm backdrop-blur-sm md:px-6">
           <MemberHeaderActions
             variant="onWhite"
-            signupBookingRef="demo-waitlist"
             onOpenBenefits={onOpenBenefits}
             onOpenSignup={onOpenSignup}
             onOpenManage={onOpenManage}
@@ -786,7 +804,7 @@ function RequestPage({
 
           <WaitlistMemberUpsell
             signupComplete={memberSignupDone}
-            onOpenSignup={() => onOpenSignup('demo-waitlist')}
+            onOpenSignup={() => onOpenSignup()}
             onContactSavedSuccess={() => setPostSubmitSource('contact')}
           />
 

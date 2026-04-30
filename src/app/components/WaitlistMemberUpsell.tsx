@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Gift } from 'lucide-react';
 import { POST_SIGNUP, WAITLIST, WAITLIST_CONTACT } from '@/app/data/memberRewardsCopy';
+import { patchEmergencyLeadContact } from '@/lib/api';
 import {
   readDemoMemberSignedUp,
   readWaitlistContactPhone,
@@ -53,10 +54,15 @@ export function WaitlistMemberUpsell({
     );
   }
 
-  const saveContact = () => {
-    const digits = contactPhone.replace(/\D/g, '');
-    if (digits.length < 10) return;
-    saveWaitlistContactPhone(digits);
+  const saveContact = async () => {
+    const phoneDigits = contactPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) return;
+    saveWaitlistContactPhone(phoneDigits);
+    try {
+      await patchEmergencyLeadContact({ customerPhone: phoneDigits });
+    } catch {
+      /* API 없음 또는 리드 없음 — 로컬만 저장 */
+    }
     setContactSaved(true);
     onContactSavedSuccess?.();
   };
@@ -79,7 +85,7 @@ export function WaitlistMemberUpsell({
           />
           <button
             type="button"
-            onClick={saveContact}
+            onClick={() => void saveContact()}
             disabled={contactPhone.replace(/\D/g, '').length < 10}
             className="shrink-0 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 disabled:opacity-50"
           >

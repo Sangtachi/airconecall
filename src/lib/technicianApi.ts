@@ -268,3 +268,51 @@ export interface TechnicianMaterialRow {
 export function fetchTechnicianMaterials(): Promise<TechnicianMaterialRow[]> {
   return technicianEnvelope('/api/technician/materials', { method: 'GET' });
 }
+
+export interface TechnicianExtraQuoteRow {
+  id: string;
+  orderId: string;
+  technicianId: string | null;
+  status: 'requested' | 'approved' | 'paid' | 'rejected' | 'cancelled';
+  totalAmount: number;
+  customerApprovedAt: string | null;
+  paidAt: string | null;
+  memo: string | null;
+  createdAt: string;
+  items: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    amount: number;
+    addonId: string | null;
+    materialId: string | null;
+  }>;
+}
+
+export function fetchJobExtraQuotes(orderId: string): Promise<TechnicianExtraQuoteRow[]> {
+  return technicianEnvelope(`/api/technician/jobs/${encodeURIComponent(orderId)}/extra-quotes`, {
+    method: 'GET',
+  });
+}
+
+export function createJobExtraQuote(
+  orderId: string,
+  body: {
+    memo?: string;
+    items: Array<{
+      name: string;
+      quantity: number;
+      unit?: string;
+      unitPrice: number;
+      addonId?: string;
+      materialId?: string;
+    }>;
+  },
+): Promise<TechnicianExtraQuoteRow> {
+  return technicianEnvelope(`/api/technician/jobs/${encodeURIComponent(orderId)}/extra-quotes`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}

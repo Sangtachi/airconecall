@@ -10,6 +10,8 @@ import {
 } from 'react-router';
 import { isCatalogApiAvailable } from '@/lib/catalogApi';
 import {
+  createJobExtraQuote,
+  fetchJobExtraQuotes,
   fetchJobPhotos,
   fetchTechnicianJob,
   fetchTechnicianJobs,
@@ -27,6 +29,7 @@ import {
   uploadJobPhotoFile,
   type TechnicianMaterialRow,
   type TechnicianSettlementRow,
+  type TechnicianExtraQuoteRow,
   type TechnicianOrderSummary,
 } from '@/lib/technicianApi';
 
@@ -273,12 +276,19 @@ function TechJobDetail() {
   const [photoErr, setPhotoErr] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoKind, setPhotoKind] = useState<'before_work' | 'after_work'>('before_work');
+  const [exQuotes, setExQuotes] = useState<TechnicianExtraQuoteRow[]>([]);
+  const [exName, setExName] = useState('현장 추가 작업');
+  const [exQty, setExQty] = useState('1');
+  const [exPrice, setExPrice] = useState('30000');
+  const [exMemo, setExMemo] = useState('');
+  const [exErr, setExErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetchTechnicianJob(id)
       .then(setRow)
       .catch(() => setRow(null));
     fetchJobPhotos(id).then(setPhotos).catch(() => setPhotos([]));
+    fetchJobExtraQuotes(id).then(setExQuotes).catch(() => setExQuotes([]));
   }, [id]);
 
   useEffect(() => {
@@ -337,6 +347,87 @@ function TechJobDetail() {
           완료
         </button>
       </div>
+
+      <section className="mt-8 space-y-2 rounded-xl bg-white p-4 shadow ring-1 ring-slate-200">
+        <h2 className="text-sm font-semibold">추가금 견적</h2>
+        <p className="text-xs text-slate-500">
+          현장 행(Line item) 단위 견적 → 관리 화면에서 고객 승인 처리 · 모의 결제까지 이어지면 상태가{' '}
+          <code className="text-[10px]">paid</code> 로 표시됩니다 (Supabase + DDL 필요).
+        </p>
+        {exErr ? <p className="text-xs text-red-600">{exErr}</p> : null}
+        <ul className="space-y-2 text-xs text-slate-700">
+          {exQuotes.map((q) => (
+            <li key={q.id} className="rounded border border-slate-100 bg-slate-50 px-3 py-2">
+              <div className="font-medium capitalize">{q.status}</div>
+              <div>합계 ₩{q.totalAmount.toLocaleString?.() ?? q.totalAmount}</div>
+              {q.memo ? <div className="text-slate-500">{q.memo}</div> : null}
+              <ul className="mt-1 text-[11px] text-slate-600">
+                {q.items.map((it) => (
+                  <li key={it.id}>
+                    {it.name} × {it.quantity} @ ₩{it.unitPrice.toLocaleString?.() ?? it.unitPrice} → ₩
+                    {it.amount.toLocaleString?.() ?? it.amount}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 grid gap-2 sm:grid-cols-4">
+          <input
+            className="rounded border border-slate-200 px-2 py-2 text-xs sm:col-span-2"
+            placeholder="항목명"
+            value={exName}
+            onChange={(e) => setExName(e.target.value)}
+          />
+          <input
+            type="number"
+            min={0.001}
+            step="any"
+            className="rounded border border-slate-200 px-2 py-2 text-xs"
+            placeholder="수량"
+            value={exQty}
+            onChange={(e) => setExQty(e.target.value)}
+          />
+          <input
+            type="number"
+            min={0}
+            className="rounded border border-slate-200 px-2 py-2 text-xs"
+            placeholder="단가(원)"
+            value={exPrice}
+            onChange={(e) => setExPrice(e.target.value)}
+          />
+          <input
+            className="rounded border border-slate-200 px-2 py-2 text-xs sm:col-span-4"
+            placeholder="메모(선택)"
+            value={exMemo}
+            onChange={(e) => setExMemo(e.target.value)}
+          />
+          <button
+            type="button"
+            className="rounded-lg bg-slate-900 py-2 text-xs text-white sm:col-span-4"
+            onClick={async () => {
+              setExErr(null);
+              try {
+                await createJobExtraQuote(id, {
+                  memo: exMemo.trim() || undefined,
+                  items: [
+                    {
+                      name: exName.trim() || '항목',
+                      quantity: Number(exQty) || 1,
+                      unitPrice: Math.max(0, Math.round(Number(exPrice) || 0)),
+                    },
+                  ],
+                });
+                await load();
+              } catch {
+                setExErr('견적 등록 실패 — Supabase DDL(extras…) 및 주문 존재 여부 확인');
+              }
+            }}
+          >
+            견적 등록(requested)
+          </button>
+        </div>
+      </section>
 
       <section className="mt-8 space-y-2">
         <h2 className="text-sm font-semibold">현장 사진</h2>

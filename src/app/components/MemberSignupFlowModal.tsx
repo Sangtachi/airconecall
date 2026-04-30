@@ -8,6 +8,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { DIALOG, SIGNUP_FLOW, POST_SIGNUP } from '@/app/data/memberRewardsCopy';
 import { Gift } from 'lucide-react';
+import { patchEmergencyLeadContact } from '@/lib/api';
 import { registerMemberAfterBooking, setDemoMemberSignedUp } from '@/lib/memberRewards';
 
 type Props = {
@@ -82,6 +83,14 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
         phone: digits(phone),
         bookingRef,
       });
+      try {
+        await patchEmergencyLeadContact({
+          customerPhone: digits(phone),
+          customerName: name.trim(),
+        });
+      } catch {
+        /* 백엔드 미연결·리드 없음 시 데모 계속 */
+      }
       setDemoMemberSignedUp(true);
       setStep(5);
       onComplete?.();
