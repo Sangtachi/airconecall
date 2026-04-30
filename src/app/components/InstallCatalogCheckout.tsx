@@ -4,8 +4,7 @@ import {
   ServiceProductDto,
   createOrderDraft,
   fetchInstallProducts,
-  fetchMockPaymentsHealth,
-  isCatalogApiAvailable,
+  fetchMockPaymentsAllowed,
   mockConfirmPayment,
 } from '@/lib/catalogApi';
 
@@ -14,7 +13,6 @@ function formatWon(n: number): string {
 }
 
 export function InstallCatalogCheckout() {
-  const [ready, setReady] = useState(() => isCatalogApiAvailable());
   const [products, setProducts] = useState<ServiceProductDto[]>([]);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,19 +24,13 @@ export function InstallCatalogCheckout() {
   const [busy, setBusy] = useState(false);
   const [draftSuccess, setDraftSuccess] = useState<string | null>(null);
   const [paidNote, setPaidNote] = useState<string | null>(null);
-  const [mockPayOk, setMockPayOk] = useState<boolean | null>(null);
+  const [mockPayAllowed, setMockPayAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setReady(isCatalogApiAvailable());
+    void fetchMockPaymentsAllowed().then(setMockPayAllowed);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    void fetchMockPaymentsHealth().then(setMockPayOk).catch(() => setMockPayOk(false));
-  }, [ready]);
-
-  useEffect(() => {
-    if (!ready) return;
     let cancelled = false;
     void (async () => {
       setLoading(true);
@@ -59,7 +51,7 @@ export function InstallCatalogCheckout() {
     return () => {
       cancelled = true;
     };
-  }, [ready]);
+  }, []);
 
   const sel = products.find((p) => p.id === productId);
   const displayPrice =
@@ -93,41 +85,23 @@ export function InstallCatalogCheckout() {
     setPaidNote(null);
     try {
       await mockConfirmPayment(draftSuccess);
-      setPaidNote('모의 결제로 확정되었습니다. (운영에서는 비활성화하세요)');
+      setPaidNote('접수 상태가 확정(결제 시뮬레이션)으로 반영되었습니다.');
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : '모의 결제 실패 — 프로덕션이거나 DISABLE_MOCK_PAYMENTS=true 여부 확인';
-      alert(msg);
+      alert(e instanceof Error ? e.message : '결제 처리를 진행할 수 없습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setBusy(false);
     }
   };
 
-  if (!ready) return null;
-
   return (
     <section className="bg-slate-50 px-6 py-10" aria-labelledby="install-catalog-heading">
       <div className="mx-auto max-w-xl">
         <h2 id="install-catalog-heading" className="text-xl font-semibold text-slate-900">
-          에어컨 설치 — 가격 확인·접수 초안 (베타)
+          에어컨 설치 상품 안내 및 접수
         </h2>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span>
-            백엔드(API) 연결 시 설치 카탈로그와 접수 초안을 사용합니다. 사업자·PG 없을 때도 로컬/비프로덕션에서는
-            모의 결제 버튼이 동작하도록 두었습니다.
-          </span>
-          {mockPayOk === null ? (
-            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">결제 허용 확인 중…</span>
-          ) : mockPayOk ? (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-              모의 결제 사용 가능
-            </span>
-          ) : (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">
-              모의 결제 차단됨(PRODUCTION 또는 DISABLE_MOCK_PAYMENTS)
-            </span>
-          )}
-        </div>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          현재 노출 가능한 설치 패키지와 예상 금액입니다. 접수 초안 저장 후 순차적으로 안내 드립니다.
+        </p>
 
         <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-sm">
           {loading ? (
@@ -220,7 +194,7 @@ export function InstallCatalogCheckout() {
                   접수 초안 만들기 (결제 전)
                 </button>
                 <p className="text-[11px] text-slate-500">
-                  실제 PG 결제 없이 초안 주문만 만듭니다. 사업자·PG 준비 전에는 로컬에서만 검증하는 것을 권장합니다.
+                  접수 초안 저장만 진행합니다. 실제 결제·현장 진행 여부는 이후 안내 단계에서 정리합니다.
                 </p>
               </div>
 
@@ -230,14 +204,16 @@ export function InstallCatalogCheckout() {
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
                       <p className="font-medium">주문 초안 ID: {draftSuccess}</p>
-                      <button
-                        type="button"
-                        className="mt-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
-                        disabled={busy}
-                        onClick={() => void onMockPay()}
-                      >
-                        개발만: 모의 결제 확정
-                      </button>
+                      {mockPayAllowed === true ? (
+                        <button
+                          type="button"
+                          className="mt-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-medium text-emerald-900 shadow-sm hover:bg-emerald-50 disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => void onMockPay()}
+                        >
+                          결제 단계 확인(테스트)
+                        </button>
+                      ) : null}
                       {paidNote ? <p className="mt-2 text-xs text-emerald-800">{paidNote}</p> : null}
                     </div>
                   </div>

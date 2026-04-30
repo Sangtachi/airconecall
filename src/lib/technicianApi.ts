@@ -1,8 +1,8 @@
 /**
  * 기사 포털 API — 헤더 `x-technician-id` 에 승인 기사 UUID(또는 로컬 t_1).
  */
-const baseTrim = (): string =>
-  ((import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, '') || '');
+import { apiRequestUrl } from '@/lib/apiRequestUrl';
+import { nestErrorPlainText } from '@/lib/nestErrorMessage';
 
 export const TECHNICIAN_ID_STORAGE = 'air_technician_id';
 
@@ -15,54 +15,69 @@ export function setStoredTechnicianId(id: string | null): void {
   else localStorage.removeItem(TECHNICIAN_ID_STORAGE);
 }
 
-async function readEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
-  const base = baseTrim();
-  const res = await fetch(`${base}${path}`, {
-    credentials: 'omit',
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-  });
-  const json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
-  if (!json.ok) throw new Error(json.error !== undefined ? JSON.stringify(json.error) : '요청 실패');
+async function parseJsonEnvelope<T>(res: Response): Promise<T> {
+  let json: { ok?: boolean; data?: T; error?: unknown };
+  try {
+    json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
+  } catch {
+    throw new Error('응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+  if (!json.ok) throw new Error(nestErrorPlainText(json.error));
   return json.data as T;
 }
 
+async function readEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(apiRequestUrl(path), {
+      credentials: 'omit',
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    });
+  } catch {
+    throw new Error('연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
+  }
+  return parseJsonEnvelope<T>(res);
+}
+
 async function technicianFetch(path: string, init?: RequestInit): Promise<Response> {
-  const base = baseTrim();
   const id = getStoredTechnicianId();
   if (!id) throw new Error('로그인 필요');
-  const res = await fetch(`${base}${path}`, {
-    credentials: 'omit',
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-technician-id': id,
-      ...(init?.headers || {}),
-    },
-  });
-  return res;
+  try {
+    return await fetch(apiRequestUrl(path), {
+      credentials: 'omit',
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-technician-id': id,
+        ...(init?.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error('연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
+  }
 }
 
 async function technicianEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await technicianFetch(path, init);
-  const json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
-  if (!json.ok) throw new Error(json.error !== undefined ? JSON.stringify(json.error) : '요청 실패');
-  return json.data as T;
+  return parseJsonEnvelope<T>(res);
 }
 
 async function technicianFormEnvelope<T>(path: string, form: FormData): Promise<T> {
-  const base = baseTrim();
   const id = getStoredTechnicianId();
   if (!id) throw new Error('로그인 필요');
-  const res = await fetch(`${base}${path}`, {
-    method: 'POST',
-    credentials: 'omit',
-    headers: { 'x-technician-id': id },
-    body: form,
-  });
-  const json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
-  if (!json.ok) throw new Error(json.error !== undefined ? JSON.stringify(json.error) : '요청 실패');
-  return json.data as T;
+  let res: Response;
+  try {
+    res = await fetch(apiRequestUrl(path), {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'x-technician-id': id },
+      body: form,
+    });
+  } catch {
+    throw new Error('연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
+  }
+  return parseJsonEnvelope<T>(res);
 }
 
 export interface TechnicianSignupCapability {
@@ -228,7 +243,7 @@ export async function uploadJobPhotoFile(
       body: file,
       headers: { 'Content-Type': mime },
     });
-    if (!put.ok) throw new Error(`storage put ${put.status}`);
+    if (!put.ok) throw new Error('사진 업로드에 문제가 있었습니다.');
     return await confirmJobPhotoAfterUpload(orderId, { path: presign.path, kind, caption });
   } catch {
     return uploadJobPhotoMultipart(orderId, kind, file, caption);

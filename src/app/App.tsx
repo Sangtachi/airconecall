@@ -337,12 +337,12 @@ function HomePage({
               <span className="text-sm">고양·파주·포천 접수 가능</span>
             </div>
             <h1 id="hero-heading" className="text-3xl mb-4">
-              에어컨 설치·청소,<br />
-              원하는 일정에 맞춰 예약·매칭
+              긴급 기사 매칭부터<br />
+              설치·청소 예약까지
             </h1>
             <p className="text-blue-100 text-lg">
-              당일/예약 금액은 앱에서 확인하고, 추가 현장 비용은<br />
-              고객 승인 후에만 진행됩니다
+              당장 문제가 있을 땐 긴급 매칭으로 접수하고,<br />
+              일정 예약과 요금 확인도 이어서 이용할 수 있어요
             </p>
           </div>
 
@@ -350,7 +350,7 @@ function HomePage({
             onClick={onRequestClick}
             className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/25 transition-colors hover:bg-blue-50"
           >
-            <span className="text-lg">설치 접수 시작</span>
+            <span className="text-lg">긴급 기사 매칭</span>
             <ArrowRight className="w-5 h-5" />
           </button>
 
@@ -640,6 +640,8 @@ function RequestPage({
   const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [matchingDeadlineIso, setMatchingDeadlineIso] = useState<string | undefined>();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [postSubmitSource, setPostSubmitSource] = useState<'contact' | 'member' | null>(null);
   const handledSignupEventRef = useRef(0);
 
@@ -649,15 +651,24 @@ function RequestPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const lead = await submitRequest({
-      ...formData,
-      submittedAt: new Date().toISOString(),
-      matchingTimeoutSeconds: MATCH_END_AT
-    });
-    setMatchingDeadlineIso(lead?.deadlineIso);
-    setSubmitted(true);
-    setElapsedTime(0);
-    setMatchingStage('searching15');
+    setSubmitError(null);
+    try {
+      setSubmitting(true);
+      const lead = await submitRequest({
+        ...formData,
+        submittedAt: new Date().toISOString(),
+        matchingTimeoutSeconds: MATCH_END_AT
+      });
+      setMatchingDeadlineIso(lead.deadlineIso);
+      setSubmitted(true);
+      setElapsedTime(0);
+      setMatchingStage('searching15');
+    } catch (err) {
+      const raw = err instanceof Error ? err.message.trim() : '';
+      setSubmitError(raw || '접수를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Matching timer logic
@@ -944,12 +955,22 @@ function RequestPage({
             </p>
           </div>
 
+          {submitError ? (
+            <div
+              className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-relaxed text-rose-900 shadow-sm"
+              role="alert"
+            >
+              {submitError}
+            </div>
+          ) : null}
+
           {/* Submit */}
           <button
             type="submit"
-            className="w-full rounded-3xl bg-blue-600 py-4 text-white shadow-lg shadow-blue-900/25 transition-colors hover:bg-blue-700"
+            disabled={submitting}
+            className="w-full rounded-3xl bg-blue-600 py-4 text-white shadow-lg shadow-blue-900/25 transition-colors hover:bg-blue-700 disabled:opacity-60"
           >
-            접수·매칭 요청
+            {submitting ? '접수 저장 중…' : '접수·매칭 요청'}
           </button>
 
           <p className="text-center text-xs text-gray-500">

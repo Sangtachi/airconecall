@@ -8,7 +8,6 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { isCatalogApiAvailable } from '@/lib/catalogApi';
 import {
   createJobExtraQuote,
   fetchJobExtraQuotes,
@@ -43,19 +42,10 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
             고객 홈
           </Link>
         </div>
-        <p className="mt-1 text-xs text-slate-500">설치·청소 기사 웹/PWA · Phase 3 API 연동</p>
+        <p className="mt-1 text-xs text-slate-500">승인된 기사님 업무 안내 화면입니다</p>
       </header>
       <main className="flex-1 px-4 py-4">{children}</main>
     </div>
-  );
-}
-
-function NoApiBanner() {
-  return (
-    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
-      환경에 <code className="text-xs">VITE_API_BASE_URL</code>이 없습니다. 에어컨 서버 URL을 설정한 뒤 다시
-      호출해 주세요.
-    </p>
   );
 }
 
@@ -63,7 +53,6 @@ function TechHome() {
   const logged = !!getStoredTechnicianId();
   return (
     <Shell title="기사 포털">
-      {!isCatalogApiAvailable() ? <NoApiBanner /> : null}
       <nav className="mt-3 flex flex-col gap-2">
         <Link className="rounded-lg bg-white px-4 py-3 text-sm shadow ring-1 ring-slate-200" to="/technician/login">
           로그인 (승인된 기사)
@@ -112,7 +101,6 @@ function TechLogin() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!isCatalogApiAvailable()) return setErr('VITE_API_BASE_URL 미설정');
     try {
       const r = await technicianSession({ phone });
       setStoredTechnicianId(r.technicianId);
@@ -124,7 +112,6 @@ function TechLogin() {
 
   return (
     <Shell title="기사 로그인">
-      {!isCatalogApiAvailable() ? <NoApiBanner /> : null}
       <form className="mt-3 space-y-3" onSubmit={submit}>
         <label className="block text-xs text-slate-600">
           휴대폰 번호 (데모: 승인 기사 김기사 01099998888)
@@ -154,7 +141,6 @@ function TechSignup() {
     e.preventDefault();
     setErr(null);
     setDone(null);
-    if (!isCatalogApiAvailable()) return setErr('VITE_API_BASE_URL 미설정');
     try {
       const res = await registerTechnician({
         name,
@@ -170,7 +156,6 @@ function TechSignup() {
 
   return (
     <Shell title="기사 가입">
-      {!isCatalogApiAvailable() ? <NoApiBanner /> : null}
       {done ? (
         <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
           접수했습니다. 기사 ID: <strong className="font-mono text-xs">{done.id}</strong>

@@ -1,24 +1,29 @@
 /**
- * 에어컨 설치·청소 카탈로그 / 주문 (백엔드 `airconeCallServer`).
- * `.env`: VITE_API_BASE_URL=http://127.0.0.1:4000 — 끝 슬래시 없이.
+ * 카탈로그·주문 API (`airconeCallServer`).
+ * 서버 호스트 없이 빌드해도 `/api/...` 상대 요청으로 로컬 개발 서버 프록시에 붙습니다.
  */
 
-const baseTrim = (): string =>
-  ((import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, '') || '');
-
-export function isCatalogApiAvailable(): boolean {
-  return !!baseTrim();
-}
+import { apiRequestUrl } from '@/lib/apiRequestUrl';
+import { nestErrorPlainText } from '@/lib/nestErrorMessage';
 
 async function readEnvelope<T>(path: string, init?: RequestInit): Promise<T> {
-  const base = baseTrim();
-  const res = await fetch(`${base}${path}`, {
-    credentials: 'omit',
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-  });
-  const json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
-  if (!json.ok) throw new Error(json.error !== undefined ? JSON.stringify(json.error) : '요청 실패');
+  let res: Response;
+  try {
+    res = await fetch(apiRequestUrl(path), {
+      credentials: 'omit',
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    });
+  } catch {
+    throw new Error('인터넷 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.');
+  }
+  let json: { ok?: boolean; data?: T; error?: unknown };
+  try {
+    json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
+  } catch {
+    throw new Error('응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+  if (!json.ok) throw new Error(nestErrorPlainText(json.error));
   return json.data as T;
 }
 
@@ -75,12 +80,12 @@ export async function mockConfirmPayment(orderId: string): Promise<OrderDraftDto
   });
 }
 
-/** 서버 설정에 따라 바뀜 — 비프로덕션은 기본 true */
-export async function fetchMockPaymentsHealth(): Promise<boolean> {
+/** 백엔드에서 허용할 때만 true. 연결 실패 시 null. */
+export async function fetchMockPaymentsAllowed(): Promise<boolean | null> {
   try {
     const v = await readEnvelope<{ mockPaymentsAllowed: boolean }>('/api/payments/mock-health');
     return !!v.mockPaymentsAllowed;
   } catch {
-    return false;
+    return null;
   }
 }
