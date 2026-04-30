@@ -85,6 +85,15 @@ function seoInjectPlugin(siteOrigin: string) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const siteOrigin = (env.VITE_SEO_ORIGIN || 'http://localhost:5173').replace(/\/$/, '')
+  const proxyRaw =
+    env.VITE_DEV_API_PROXY_TARGET || env.VITE_API_BASE_URL || 'http://127.0.0.1:4000';
+  let apiProxyTarget = proxyRaw.replace(/\/$/, '');
+  try {
+    const u = new URL(proxyRaw);
+    apiProxyTarget = u.origin;
+  } catch {
+    apiProxyTarget = apiProxyTarget.replace(/\/?api\/?$/i, '');
+  }
 
   return {
   plugins: [
@@ -144,5 +153,13 @@ export default defineConfig(({ mode }) => {
   },
 
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  server: {
+    proxy: {
+      '/api': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+    },
+  },
 }
 })

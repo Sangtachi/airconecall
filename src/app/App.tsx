@@ -12,6 +12,7 @@ import { readDemoMemberSignedUp } from '@/lib/memberRewards';
 import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
+import { InstallCatalogCheckout } from '@/app/components/InstallCatalogCheckout';
 
 /** 1차 15분 거리 검색(초) → 그다음 30분 거리 검색 시작 시점까지의 경과(초) */
 const MATCH_SWITCH_TO_WIDE_AT = 15;
@@ -257,7 +258,8 @@ function MatchingScreen({
           <div className="mb-4 space-y-2.5 rounded-2xl border border-gray-100 bg-slate-50/90 p-4 text-xs leading-relaxed text-gray-600 md:text-[13px]">
             <p>
               서비스 지역은{' '}
-              <span className="font-medium text-gray-700">경기 고양시·파주시·포천시</span>이며, 가정용 벽걸이·스탠드·2in1 긴급 점검·수리만 가능합니다.
+              <span className="font-medium text-gray-700">경기 고양시·파주시·포천시</span>
+            우선 안내합니다. 에어컨 설치·청소 중심으로 매칭하며, 접수 과정에서 일정 유형별 요금 안내가 따릅니다.
             </p>
             <p>
               현장에서 추가 비용이 생기면{' '}
@@ -325,12 +327,12 @@ function HomePage({
               <span className="text-sm">고양·파주·포천 접수 가능</span>
             </div>
             <h1 id="hero-heading" className="text-3xl mb-4">
-              에어컨 긴급 고장?<br />
-              가까운 기사님을 바로 연결해 드려요
+              에어컨 설치·청소,<br />
+              원하는 일정에 맞춰 예약·매칭
             </h1>
             <p className="text-blue-100 text-lg">
-              등록된 파트너 기사님이<br />
-              고양·파주·포천에서 출동합니다
+              당일/예약 금액은 앱에서 확인하고, 추가 현장 비용은<br />
+              고객 승인 후에만 진행됩니다
             </p>
           </div>
 
@@ -338,26 +340,28 @@ function HomePage({
             onClick={onRequestClick}
             className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/25 transition-colors hover:bg-blue-50"
           >
-            <span className="text-lg">긴급 기사 매칭</span>
+            <span className="text-lg">설치 접수 시작</span>
             <ArrowRight className="w-5 h-5" />
           </button>
 
           <div className="mt-8 grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-2xl mb-1">1분내</div>
-              <div className="text-sm text-blue-200">매칭</div>
+              <div className="text-2xl mb-1">당일·예약</div>
+              <div className="text-sm text-blue-200">가격 구분</div>
             </div>
             <div>
-              <div className="text-2xl mb-1">24시간</div>
-              <div className="text-sm text-blue-200">접수·상담</div>
+              <div className="text-2xl mb-1">앱 결제</div>
+              <div className="text-sm text-blue-200">투명한 요금</div>
             </div>
             <div>
-              <div className="text-2xl mb-1">100%</div>
-              <div className="text-sm text-blue-200">검증 파트너</div>
+              <div className="text-2xl mb-1">검증</div>
+              <div className="text-sm text-blue-200">파트너 기사</div>
             </div>
           </div>
         </div>
       </div>
+
+      <InstallCatalogCheckout />
 
       {/* How It Works */}
       <div className="w-full px-6 py-12">
@@ -369,8 +373,10 @@ function HomePage({
               1
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">증상·위치 입력</h3>
-              <p className="text-gray-600">방문 지역(고양·파주·포천)과 에어컨 종류, 증상을 적어 주세요</p>
+              <h3 className="mb-1">설치 종류·일정·위치</h3>
+              <p className="text-gray-600">
+                에어컨 유형과 당일/예약, 방문 지역을 입력합니다 (고양·파주·포천 우선 안내 구역)
+              </p>
             </div>
           </div>
 
@@ -401,8 +407,10 @@ function HomePage({
               4
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">방문·점검·수리</h3>
-              <p className="text-gray-600">현장 진단 후 필요한 작업만 동의하에 진행합니다</p>
+              <h3 className="mb-1">방문·설치·청소</h3>
+              <p className="text-gray-600">
+                포함 범위는 상품 안내를 따르고, 추가 작업만 고객 앱 동의 후 진행합니다
+              </p>
             </div>
           </div>
         </div>
@@ -418,7 +426,7 @@ function HomePage({
               <Clock className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
               <h3 className="mb-2 font-semibold text-gray-900">긴급 우선</h3>
               <p className="text-sm leading-snug text-gray-500">
-                긴급 요청을<br />먼저 받습니다
+                당일/예약<br />요금 구분 노출
               </p>
             </div>
 
@@ -440,9 +448,9 @@ function HomePage({
 
             <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
               <Wrench className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
-              <h3 className="mb-2 font-semibold text-gray-900">야간·주말</h3>
+              <h3 className="mb-2 font-semibold text-gray-900">플랫폼 결제 안내</h3>
               <p className="text-sm leading-snug text-gray-500">
-                심야·주말도<br />접수 가능
+                앱 밖 현금은<br />보증·CS 미적용 원칙
               </p>
             </div>
           </div>
