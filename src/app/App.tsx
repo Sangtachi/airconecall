@@ -8,7 +8,7 @@ import { MemberHeaderActions } from '@/app/components/MemberHeaderActions';
 import { MemberSignupFlowModal } from '@/app/components/MemberSignupFlowModal';
 import { PostSubmitStatusPage } from '@/app/components/PostSubmitStatusPage';
 import { WaitlistMemberUpsell } from '@/app/components/WaitlistMemberUpsell';
-import { readDemoMemberSignedUp } from '@/lib/memberRewards';
+import { readCachedMemberSignedUp } from '@/lib/memberRewards';
 import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
@@ -30,7 +30,7 @@ export default function App() {
   const [memberBenefitsOpen, setMemberBenefitsOpen] = useState(false);
   const [memberSignupOpen, setMemberSignupOpen] = useState(false);
   const [signupBookingRef, setSignupBookingRef] = useState<string | undefined>();
-  const [memberSignupDone, setMemberSignupDone] = useState(() => readDemoMemberSignedUp());
+  const [memberSignupDone, setMemberSignupDone] = useState(() => readCachedMemberSignedUp());
   const [memberSignupEventId, setMemberSignupEventId] = useState(0);
 
   const openSignup = (ref?: string) => {
@@ -706,7 +706,7 @@ function RequestPage({
     onOpenSignup,
     onOpenManage
   };
-  const isMemberSignedIn = memberSignupDone || readDemoMemberSignedUp();
+  const isMemberSignedIn = memberSignupDone || readCachedMemberSignedUp();
   const goHomeOrManage = () => {
     if (isMemberSignedIn) onGoMemberDashboard();
     else onBack();

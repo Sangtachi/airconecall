@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { readDemoMemberSignedUp } from '@/lib/memberRewards';
+import { readCachedMemberSignedUp } from '@/lib/memberRewards';
 
 export type MemberHeaderVariant = 'onBlue' | 'onWhite';
 
@@ -31,7 +31,7 @@ export function MemberHeaderActions({
   onOpenManage,
   signupBookingRef,
 }: Props) {
-  const enrolled = readDemoMemberSignedUp();
+  const enrolled = readCachedMemberSignedUp();
   const isBlue = variant === 'onBlue';
   const ring = isBlue ? 'border-white/40 bg-white/10 shadow-sm' : 'border-gray-200 bg-neutral-50 shadow-sm';
 

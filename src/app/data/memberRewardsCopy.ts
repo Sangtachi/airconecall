@@ -44,7 +44,7 @@ export const SIGNUP_FLOW = {
   termsPrivacy: '(필수) 개인정보 수집·이용에 동의합니다.',
   termsMarketing: '(선택) 이벤트·혜택 알림 문자를 받습니다.',
   phoneTitle: '휴대폰 본인 확인',
-  phoneHint: '인증 문자는 서비스 오픈 시 실제 발송됩니다. (지금은 데모 확인만)',
+  phoneHint: '인증 문자는 서비스 오픈 시 실제 발송됩니다. 지금은 입력 확인 후 회원 등록만 진행합니다.',
   phoneSend: '인증번호 받기',
   phoneVerifyPlaceholder: '6자리 인증번호',
   phoneVerifyBtn: '인증 확인',

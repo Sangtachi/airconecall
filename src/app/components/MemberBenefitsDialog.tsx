@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { BENEFITS_CTA_SIGNUP, DIALOG } from '@/app/data/memberRewardsCopy';
-import { readDemoMemberSignedUp } from '@/lib/memberRewards';
+import { readCachedMemberSignedUp } from '@/lib/memberRewards';
 
 type MemberBenefitsDialogProps = {
   open: boolean;
@@ -17,7 +17,7 @@ type MemberBenefitsDialogProps = {
 };
 
 export function MemberBenefitsDialog({ open, onOpenChange, onStartSignup }: MemberBenefitsDialogProps) {
-  const enrolled = readDemoMemberSignedUp();
+  const enrolled = readCachedMemberSignedUp();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

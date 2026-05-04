@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { readDemoMemberSignedUp } from '@/lib/memberRewards';
+import { readCachedMemberSignedUp } from '@/lib/memberRewards';
 
 type Props = {
   open: boolean;
@@ -15,7 +15,7 @@ type Props = {
 
 /** 실제 마이페이지 연동 전 — 가입 상태 안내 및 가입 유도 */
 export function MemberManageDialog({ open, onOpenChange, onOpenSignup }: Props) {
-  const enrolled = readDemoMemberSignedUp();
+  const enrolled = readCachedMemberSignedUp();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -28,7 +28,7 @@ export function MemberManageDialog({ open, onOpenChange, onOpenSignup }: Props) 
         </DialogHeader>
         {enrolled ? (
           <div className="space-y-3 text-sm leading-relaxed text-gray-700">
-            <p>이 브라우저에서는 <span className="font-medium text-gray-900">회원 등록 완료(데모)</span> 상태로 보입니다.</p>
+            <p>이 브라우저에서는 <span className="font-medium text-gray-900">회원 등록 완료</span> 상태로 보입니다.</p>
             <p className="text-gray-500">정식 론칭 시 이 번호로 로그인하면 출동 내역과 쿠폰을 모아 볼 수 있어요.</p>
           </div>
         ) : (

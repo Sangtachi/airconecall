@@ -114,7 +114,7 @@ function TechLogin() {
     <Shell title="기사 로그인">
       <form className="mt-3 space-y-3" onSubmit={submit}>
         <label className="block text-xs text-slate-600">
-          휴대폰 번호 (데모: 승인 기사 김기사 01099998888)
+          휴대폰 번호 (관리자 승인 완료 기사)
           <input
             className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
             value={phone}
@@ -133,7 +133,26 @@ function TechLogin() {
 function TechSignup() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [businessType, setBusinessType] = useState<'individual' | 'sole_business' | 'company'>('individual');
+  const [businessNumber, setBusinessNumber] = useState('');
   const [baseRegion, setBaseRegion] = useState('');
+  const [regionsText, setRegionsText] = useState('경기 고양시, 경기 파주시');
+  const [serviceInstall, setServiceInstall] = useState(true);
+  const [serviceCleaning, setServiceCleaning] = useState(false);
+  const [airconWall, setAirconWall] = useState(true);
+  const [airconStand, setAirconStand] = useState(false);
+  const [airconTwoInOne, setAirconTwoInOne] = useState(false);
+  const [airconSystem, setAirconSystem] = useState(false);
+  const [availableSameDay, setAvailableSameDay] = useState(true);
+  const [availableReservation, setAvailableReservation] = useState(true);
+  const [availableWeekend, setAvailableWeekend] = useState(false);
+  const [availableNight, setAvailableNight] = useState(false);
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankHolder, setBankHolder] = useState('');
+  const [idCardUrl, setIdCardUrl] = useState('');
+  const [businessLicenseUrl, setBusinessLicenseUrl] = useState('');
+  const [insuranceUrl, setInsuranceUrl] = useState('');
   const [done, setDone] = useState<{ id: string; status: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -141,12 +160,50 @@ function TechSignup() {
     e.preventDefault();
     setErr(null);
     setDone(null);
+    const services = [
+      serviceInstall ? 'install' : null,
+      serviceCleaning ? 'cleaning' : null,
+    ].filter(Boolean) as Array<'install' | 'cleaning'>;
+    const aircons = [
+      airconWall ? 'wall' : null,
+      airconStand ? 'stand' : null,
+      airconTwoInOne ? 'two_in_one' : null,
+      airconSystem ? 'system' : null,
+    ].filter(Boolean) as Array<'wall' | 'stand' | 'two_in_one' | 'system'>;
+    const capabilities = services.flatMap((serviceType) =>
+      aircons.map((airconType) => ({ serviceType, airconType })),
+    );
+    if (capabilities.length === 0) {
+      setErr('가능 서비스와 에어컨 유형을 1개 이상 선택해 주세요.');
+      return;
+    }
+    const documents = [
+      idCardUrl.trim() ? { documentType: 'id_card' as const, fileUrl: idCardUrl.trim() } : null,
+      businessLicenseUrl.trim()
+        ? { documentType: 'business_license' as const, fileUrl: businessLicenseUrl.trim() }
+        : null,
+      insuranceUrl.trim() ? { documentType: 'insurance' as const, fileUrl: insuranceUrl.trim() } : null,
+    ].filter(Boolean) as Array<{ documentType: 'id_card' | 'business_license' | 'insurance'; fileUrl: string }>;
     try {
       const res = await registerTechnician({
         name,
         phone,
+        businessType,
+        businessNumber: businessNumber || undefined,
         baseRegion: baseRegion || undefined,
-        capabilities: [{ serviceType: 'install', airconType: 'wall' }],
+        regions: regionsText
+          .split(',')
+          .map((r) => r.trim())
+          .filter(Boolean),
+        availableSameDay,
+        availableReservation,
+        availableWeekend,
+        availableNight,
+        bankName: bankName || undefined,
+        bankAccount: bankAccount || undefined,
+        bankHolder: bankHolder || undefined,
+        capabilities,
+        documents,
       });
       setDone(res);
     } catch {
@@ -192,11 +249,106 @@ function TechSignup() {
               onChange={(e) => setBaseRegion(e.target.value)}
             />
           </label>
+          <label className="block text-xs text-slate-600">
+            사업자 유형
+            <select
+              className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value as typeof businessType)}
+            >
+              <option value="individual">개인</option>
+              <option value="sole_business">개인사업자</option>
+              <option value="company">법인</option>
+            </select>
+          </label>
+          <label className="block text-xs text-slate-600">
+            사업자번호 (선택)
+            <input
+              className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+              value={businessNumber}
+              onChange={(e) => setBusinessNumber(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-slate-600">
+            활동 가능 지역 (쉼표로 구분)
+            <input
+              className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+              value={regionsText}
+              onChange={(e) => setRegionsText(e.target.value)}
+            />
+          </label>
+          <fieldset className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+            <legend className="px-1 font-medium text-slate-800">가능 서비스</legend>
+            <label className="mr-3 inline-flex items-center gap-1">
+              <input type="checkbox" checked={serviceInstall} onChange={(e) => setServiceInstall(e.target.checked)} />
+              설치
+            </label>
+            <label className="inline-flex items-center gap-1">
+              <input type="checkbox" checked={serviceCleaning} onChange={(e) => setServiceCleaning(e.target.checked)} />
+              청소
+            </label>
+          </fieldset>
+          <fieldset className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+            <legend className="px-1 font-medium text-slate-800">에어컨 유형</legend>
+            {[
+              ['벽걸이', airconWall, setAirconWall],
+              ['스탠드', airconStand, setAirconStand],
+              ['투인원', airconTwoInOne, setAirconTwoInOne],
+              ['시스템', airconSystem, setAirconSystem],
+            ].map(([label, checked, setter]) => (
+              <label key={String(label)} className="mr-3 inline-flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={Boolean(checked)}
+                  onChange={(e) => (setter as React.Dispatch<React.SetStateAction<boolean>>)(e.target.checked)}
+                />
+                {String(label)}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+            <legend className="px-1 font-medium text-slate-800">가능 시간</legend>
+            {[
+              ['당일', availableSameDay, setAvailableSameDay],
+              ['예약', availableReservation, setAvailableReservation],
+              ['주말', availableWeekend, setAvailableWeekend],
+              ['야간', availableNight, setAvailableNight],
+            ].map(([label, checked, setter]) => (
+              <label key={String(label)} className="mr-3 inline-flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={Boolean(checked)}
+                  onChange={(e) => (setter as React.Dispatch<React.SetStateAction<boolean>>)(e.target.checked)}
+                />
+                {String(label)}
+              </label>
+            ))}
+          </fieldset>
+          <div className="grid grid-cols-1 gap-3">
+            <label className="block text-xs text-slate-600">
+              은행명 (선택)
+              <input className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+            </label>
+            <label className="block text-xs text-slate-600">
+              계좌번호 (선택)
+              <input className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} />
+            </label>
+            <label className="block text-xs text-slate-600">
+              예금주 (선택)
+              <input className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm" value={bankHolder} onChange={(e) => setBankHolder(e.target.value)} />
+            </label>
+          </div>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium text-slate-800">서류 URL (선택, Storage 업로드 후 URL)</p>
+            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="신분증/자격 확인 URL" value={idCardUrl} onChange={(e) => setIdCardUrl(e.target.value)} />
+            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="사업자등록증 URL" value={businessLicenseUrl} onChange={(e) => setBusinessLicenseUrl(e.target.value)} />
+            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="보험 증빙 URL" value={insuranceUrl} onChange={(e) => setInsuranceUrl(e.target.value)} />
+          </div>
           {err ? <p className="text-sm text-red-600">{err}</p> : null}
           <button type="submit" className="w-full rounded-lg bg-slate-900 py-3 text-sm text-white">
             신청하기
           </button>
-          <p className="text-xs text-slate-500">가능 업종은 기본값(설치 · 벽걸이). 추후 선택 UI 확대.</p>
+          <p className="text-xs text-slate-500">제출 정보는 Supabase 기사 검증 테이블에 저장되고, 관리자 승인 후 작업 알림을 받을 수 있습니다.</p>
         </form>
       )}
     </Shell>
@@ -417,8 +569,7 @@ function TechJobDetail() {
       <section className="mt-8 space-y-2">
         <h2 className="text-sm font-semibold">현장 사진</h2>
         <p className="text-xs text-slate-500">
-          Supabase 스토리지가 있으면 presigned 업로드 후 등록합니다. 실패 시 서버로 멀티파트 전송합니다. 로컬 전용(DB
-          미연결)이면 공개 URL만 등록 가능합니다.
+          Supabase 스토리지가 있으면 presigned 업로드 후 등록합니다. 실패 시 서버로 멀티파트 전송합니다.
         </p>
         {photoErr ? <p className="text-xs text-red-600">{photoErr}</p> : null}
         <div className="flex flex-wrap items-center gap-2">

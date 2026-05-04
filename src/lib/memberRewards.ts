@@ -1,10 +1,10 @@
-/**
- * 회원·리워드 — 백엔드 연동 전 플레이스홀더.
- * Phase 1: 로컬 상태만 (localStorage). API 생기면 교체.
- */
+import { apiRequestUrl } from '@/lib/apiRequestUrl';
+import { nestErrorPlainText } from '@/lib/nestErrorMessage';
+
+/** 회원·리워드 — Supabase backed API + 화면 복구용 최소 캐시 */
 const STORAGE_KEYS = {
-  demoSignupComplete: 'aircone_member_demo_signed_up',
-  waitlistContactPhone: 'aircone_demo_waitlist_contact',
+  cachedMemberPhone: 'aircone_member_phone_cache',
+  waitlistContactPhone: 'aircone_waitlist_contact_cache',
 } as const;
 
 export function saveWaitlistContactPhone(phoneDigits: string): void {
@@ -23,33 +23,52 @@ export function readWaitlistContactPhone(): string | null {
   }
 }
 
-export function readDemoMemberSignedUp(): boolean {
+export function readCachedMemberSignedUp(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEYS.demoSignupComplete) === '1';
+    return !!localStorage.getItem(STORAGE_KEYS.cachedMemberPhone);
   } catch {
     return false;
   }
 }
 
-export function setDemoMemberSignedUp(done: boolean): void {
+export function setCachedMemberPhone(phoneDigits: string | null): void {
   try {
-    if (done) localStorage.setItem(STORAGE_KEYS.demoSignupComplete, '1');
-    else localStorage.removeItem(STORAGE_KEYS.demoSignupComplete);
+    if (phoneDigits) localStorage.setItem(STORAGE_KEYS.cachedMemberPhone, phoneDigits);
+    else localStorage.removeItem(STORAGE_KEYS.cachedMemberPhone);
   } catch {
     /* ignore */
   }
 }
 
-/** 백엔드 연동 시: bookingId + phone 으로 회원 가입·쿠폰 발급 호출 */
-export async function registerMemberAfterBooking(_payload: {
-  phone: string;
-  bookingRef?: string;
-}): Promise<{ ok: boolean }> {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-  if (base) {
-    // TODO: POST /members 또는 booking 연동
-    // await fetch(`${base.replace(/\/$/, '')}/members`, { ... })
-    void _payload;
+async function readEnvelope<T>(res: Response): Promise<T> {
+  let json: { ok?: boolean; data?: T; error?: unknown };
+  try {
+    json = (await res.json()) as { ok?: boolean; data?: T; error?: unknown };
+  } catch {
+    throw new Error('응답을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
   }
-  return { ok: true };
+  if (!json.ok) throw new Error(nestErrorPlainText(json.error));
+  return json.data as T;
+}
+
+/** bookingRef + phone 으로 회원 upsert + 가입 쿠폰 멱등 발급 */
+export async function registerMemberAfterBooking(payload: {
+  phone: string;
+  name?: string;
+  marketingConsent?: boolean;
+  bookingRef?: string;
+}): Promise<{ ok: boolean; memberId?: string; couponId?: string }> {
+  const res = await fetch(apiRequestUrl('/api/members/register'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const out = await readEnvelope<{
+    member: { id: string; phone: string };
+    signupCoupon: { id: string } | null;
+  }>(res);
+  if (out.member?.phone) {
+    setCachedMemberPhone(out.member.phone);
+  }
+  return { ok: true, memberId: out.member?.id, couponId: out.signupCoupon?.id };
 }

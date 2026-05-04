@@ -9,7 +9,7 @@ import {
 import { DIALOG, SIGNUP_FLOW, POST_SIGNUP } from '@/app/data/memberRewardsCopy';
 import { Gift } from 'lucide-react';
 import { patchEmergencyLeadContact } from '@/lib/api';
-import { registerMemberAfterBooking, setDemoMemberSignedUp } from '@/lib/memberRewards';
+import { registerMemberAfterBooking, setCachedMemberPhone } from '@/lib/memberRewards';
 
 type Props = {
   open: boolean;
@@ -81,6 +81,8 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
     try {
       await registerMemberAfterBooking({
         phone: digits(phone),
+        name: name.trim(),
+        marketingConsent: agreeMarketing,
         bookingRef,
       });
       try {
@@ -89,9 +91,9 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
           customerName: name.trim(),
         });
       } catch {
-        /* 백엔드 미연결·리드 없음 시 데모 계속 */
+        /* 리드가 없는 진입 경로에서는 회원 가입만 완료 처리 */
       }
-      setDemoMemberSignedUp(true);
+      setCachedMemberPhone(digits(phone));
       setStep(5);
       onComplete?.();
     } finally {

@@ -83,3 +83,27 @@ npm run build:mobile
 ## 서버 연동 (나중에)
 
 백엔드를 붙일 때는 `.env.example`을 참고해 `VITE_API_BASE_URL`을 설정하고, [`src/lib/api.ts`](src/lib/api.ts)의 `submitRequest`에 실제 `fetch`를 연결하면 됩니다.
+
+---
+
+## 긴급 접수 자동 전환 연동 메모 (2026-04)
+
+고객앱의 긴급 접수는 서버의 `/api/emergency-leads` 계열 엔드포인트와 연결되어 있으며, 매칭 마감 후 서버가 자동으로 접수/배차와 주문 초안을 생성합니다.
+
+- **기본 흐름**
+  - 고객앱: `POST /api/emergency-leads` (긴급 리드 생성)
+  - 고객앱: `PATCH /api/emergency-leads/:id/contact` (연락처 저장 시 `contact_saved`)
+  - 고객앱(또는 서버 스윕): `PATCH /api/emergency-leads/:id/timeout`
+  - 서버: 마감 이후 리드를 `converted_to_order`로 전환하고 `convertedBookingId`/`convertedOrderId`를 채움
+- **중복 안전성**
+  - `timeout` 재호출 시 동일 booking/order를 재사용(멱등), 중복 생성하지 않음
+- **로컬 개발 시 확인 포인트**
+  - Vite 프록시 또는 `VITE_API_BASE_URL`가 실제 Nest 포트를 바라보는지 확인
+  - 서버 미기동이면 `ECONNREFUSED`가 발생하므로 먼저 서버 실행 필요
+
+### 빠른 검증 순서
+
+1. 서버 실행 (`airconeCallServer`): `npm run dev` 또는 `npm run build && npm run start`
+2. 고객앱 실행: `npm run dev`
+3. 긴급 접수 생성 후 타임아웃 전환까지 진행
+4. 관리자 화면/스크립트에서 전환 결과(`converted*` 필드) 확인

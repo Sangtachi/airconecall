@@ -3,7 +3,7 @@ import { Gift } from 'lucide-react';
 import { POST_SIGNUP, WAITLIST, WAITLIST_CONTACT } from '@/app/data/memberRewardsCopy';
 import { patchEmergencyLeadContact } from '@/lib/api';
 import {
-  readDemoMemberSignedUp,
+  readCachedMemberSignedUp,
   readWaitlistContactPhone,
   saveWaitlistContactPhone,
 } from '@/lib/memberRewards';
@@ -27,7 +27,7 @@ export function WaitlistMemberUpsell({
     Boolean(readWaitlistContactPhone()?.length),
   );
 
-  const done = Boolean(signupComplete) || readDemoMemberSignedUp();
+  const done = Boolean(signupComplete) || readCachedMemberSignedUp();
 
   if (done) {
     return (
@@ -48,7 +48,7 @@ export function WaitlistMemberUpsell({
           ))}
         </ul>
         <p className="mt-4 text-xs leading-relaxed text-emerald-800/80">
-          백엔드 연결 시 실제 쿠폰 발급·알림이 이어집니다.
+          가입 쿠폰과 연락처가 서버에 저장됩니다.
         </p>
       </div>
     );
@@ -61,7 +61,7 @@ export function WaitlistMemberUpsell({
     try {
       await patchEmergencyLeadContact({ customerPhone: phoneDigits });
     } catch {
-      /* API 없음 또는 리드 없음 — 로컬만 저장 */
+      /* 리드가 없는 진입 경로에서는 연락처 캐시만 유지 */
     }
     setContactSaved(true);
     onContactSavedSuccess?.();

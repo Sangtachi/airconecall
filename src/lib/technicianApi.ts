@@ -1,5 +1,5 @@
 /**
- * 기사 포털 API — 헤더 `x-technician-id` 에 승인 기사 UUID(또는 로컬 t_1).
+ * 기사 포털 API — 임시 헤더 `x-technician-id` 에 승인된 Supabase 기사 UUID를 전송한다.
  */
 import { apiRequestUrl } from '@/lib/apiRequestUrl';
 import { nestErrorPlainText } from '@/lib/nestErrorMessage';
@@ -85,11 +85,27 @@ export interface TechnicianSignupCapability {
   airconType: 'wall' | 'stand' | 'two_in_one' | 'system';
 }
 
+export interface TechnicianSignupDocument {
+  documentType: 'id_card' | 'business_license' | 'career' | 'insurance' | 'bankbook' | 'other';
+  fileUrl: string;
+}
+
 export function registerTechnician(body: {
   name: string;
   phone: string;
+  businessType?: 'individual' | 'sole_business' | 'company';
+  businessNumber?: string;
   baseRegion?: string;
+  regions?: string[];
+  availableSameDay?: boolean;
+  availableReservation?: boolean;
+  availableWeekend?: boolean;
+  availableNight?: boolean;
+  bankName?: string;
+  bankAccount?: string;
+  bankHolder?: string;
   capabilities: TechnicianSignupCapability[];
+  documents?: TechnicianSignupDocument[];
 }): Promise<{ id: string; status: string }> {
   return readEnvelope('/api/technician/register', {
     method: 'POST',
