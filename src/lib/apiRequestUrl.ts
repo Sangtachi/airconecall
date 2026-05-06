@@ -26,10 +26,32 @@ function devBootstrapNestOrigin(): string {
   return `http://${host}:${port}`;
 }
 
+function withProtocol(raw: string): string {
+  const value = raw.trim();
+  if (!value) return '';
+  if (value.startsWith('/')) return value;
+  if (value.startsWith('//')) {
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+    return `${protocol}${value}`;
+  }
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^(localhost|127\.0\.0\.1|\[?::1\]?)(:\d+)?(\/|$)/i.test(value)) {
+    return `http://${value}`;
+  }
+  return `https://${value}`;
+}
+
+export function normalizeApiBaseUrl(raw: string): string {
+  return withProtocol(raw).replace(/\/+$/, '').replace(/\/api$/i, '');
+}
+
+export function apiBaseOriginFromEnv(): string {
+  return normalizeApiBaseUrl((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '');
+}
+
 export function apiRequestUrl(pathWithLeadingSlash: string): string {
   const p = pathWithLeadingSlash.startsWith('/') ? pathWithLeadingSlash : `/${pathWithLeadingSlash}`;
-  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? '';
-  const base = raw.replace(/\/$/, '');
+  const base = apiBaseOriginFromEnv();
   if (base.length > 0) return `${base}${p}`;
 
   if (

@@ -13,6 +13,7 @@ import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
 import { InstallCatalogCheckout } from '@/app/components/InstallCatalogCheckout';
+import { apiBaseOriginFromEnv } from '@/lib/apiRequestUrl';
 
 /** 1차 근처 검색 구간 종료까지 경과(초) — 이후 2차(광역) 검색 */
 const MATCH_SWITCH_TO_WIDE_AT = 20;
@@ -20,8 +21,8 @@ const MATCH_SWITCH_TO_WIDE_AT = 20;
 const MATCH_END_AT = 40;
 
 function getCompanyServerUrl(): string {
-  const apiBase = String(import.meta.env.VITE_API_BASE_URL ?? '').trim();
-  if (apiBase) return apiBase.replace(/\/?api\/?$/i, '').replace(/\/$/, '');
+  const apiBase = apiBaseOriginFromEnv();
+  if (apiBase) return apiBase;
   return 'http://127.0.0.1:4000';
 }
 
