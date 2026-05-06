@@ -50,7 +50,7 @@ export const SIGNUP_FLOW = {
   phoneVerifyBtn: '인증 확인',
   accountTitle: '에이씨나우 계정 만들기',
   nameLabel: '이름',
-  pwLabel: '비밀번호 (8자 이상)',
+  pwLabel: '비밀번호 (5자 이상)',
   pwConfirmLabel: '비밀번호 확인',
   submitSignup: '가입 완료',
   back: '이전',

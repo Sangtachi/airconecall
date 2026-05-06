@@ -9,7 +9,7 @@ import {
 import { DIALOG, SIGNUP_FLOW, POST_SIGNUP } from '@/app/data/memberRewardsCopy';
 import { Gift } from 'lucide-react';
 import { patchEmergencyLeadContact } from '@/lib/api';
-import { registerMemberAfterBooking, setCachedMemberPhone } from '@/lib/memberRewards';
+import { registerMemberAfterBooking } from '@/lib/memberRewards';
 
 type Props = {
   open: boolean;
@@ -54,7 +54,7 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
   const canNextFrom3 =
     phoneVerified && digits(phone).length >= 10;
   const canSubmitAccount =
-    name.trim().length >= 2 && password.length >= 8 && password === password2;
+    name.trim().length >= 2 && password.length >= 5 && password === password2;
 
   const handleNext = () => {
     setStep((s) => Math.min(5, s + 1));
@@ -79,8 +79,9 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
     if (!canSubmitAccount) return;
     setSubmitting(true);
     try {
-      await registerMemberAfterBooking({
+      const result = await registerMemberAfterBooking({
         phone: digits(phone),
+        password,
         name: name.trim(),
         marketingConsent: agreeMarketing,
         bookingRef,
@@ -89,11 +90,11 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
         await patchEmergencyLeadContact({
           customerPhone: digits(phone),
           customerName: name.trim(),
+          userId: result.memberId,
         });
       } catch {
         /* 리드가 없는 진입 경로에서는 회원 가입만 완료 처리 */
       }
-      setCachedMemberPhone(digits(phone));
       setStep(5);
       onComplete?.();
     } finally {

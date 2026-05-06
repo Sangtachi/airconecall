@@ -85,6 +85,18 @@ export async function submitRequest(
     issue: String(payload.issue ?? '').trim(),
     urgency: payload.urgency === 'scheduled' ? 'scheduled' : 'now',
   };
+  if (typeof payload.userId === 'string' && payload.userId.trim()) {
+    body.userId = payload.userId.trim();
+  }
+  if (typeof payload.memberId === 'string' && payload.memberId.trim()) {
+    body.userId = payload.memberId.trim();
+  }
+  if (typeof payload.customerPhone === 'string' && payload.customerPhone.trim()) {
+    body.customerPhone = payload.customerPhone.trim();
+  }
+  if (typeof payload.customerName === 'string' && payload.customerName.trim()) {
+    body.customerName = payload.customerName.trim();
+  }
   if (typeof mt === 'number' && Number.isFinite(mt)) {
     body.matchingTimeoutSeconds = Math.floor(mt);
   }

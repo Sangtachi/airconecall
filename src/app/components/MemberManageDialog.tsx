@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { readCachedMemberSignedUp } from '@/lib/memberRewards';
+import { hasMemberSession } from '@/lib/memberRewards';
 
 type Props = {
   open: boolean;
@@ -13,9 +13,9 @@ type Props = {
   onOpenSignup: () => void;
 };
 
-/** 실제 마이페이지 연동 전 — 가입 상태 안내 및 가입 유도 */
+/** 회원 세션 상태 안내 및 가입 유도 */
 export function MemberManageDialog({ open, onOpenChange, onOpenSignup }: Props) {
-  const enrolled = readCachedMemberSignedUp();
+  const enrolled = hasMemberSession();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -23,13 +23,13 @@ export function MemberManageDialog({ open, onOpenChange, onOpenSignup }: Props) 
         <DialogHeader>
           <DialogTitle className="text-left">회원 관리</DialogTitle>
           <DialogDescription className="text-left">
-            에이씨나우 계정 로그인·예약 내역 등은 순차적으로 열립니다.
+            로그인하면 내 문의, 주문, 쿠폰, 리워드를 회원 기준으로 확인합니다.
           </DialogDescription>
         </DialogHeader>
         {enrolled ? (
           <div className="space-y-3 text-sm leading-relaxed text-gray-700">
-            <p>이 브라우저에서는 <span className="font-medium text-gray-900">회원 등록 완료</span> 상태로 보입니다.</p>
-            <p className="text-gray-500">정식 론칭 시 이 번호로 로그인하면 출동 내역과 쿠폰을 모아 볼 수 있어요.</p>
+            <p>현재 기기에서 <span className="font-medium text-gray-900">회원 세션</span>이 유지되고 있습니다.</p>
+            <p className="text-gray-500">회원 관리 화면에서 서버에 저장된 문의와 쿠폰을 확인할 수 있어요.</p>
           </div>
         ) : (
           <div className="space-y-4">

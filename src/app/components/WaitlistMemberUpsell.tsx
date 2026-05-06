@@ -3,7 +3,7 @@ import { Gift } from 'lucide-react';
 import { POST_SIGNUP, WAITLIST, WAITLIST_CONTACT } from '@/app/data/memberRewardsCopy';
 import { patchEmergencyLeadContact } from '@/lib/api';
 import {
-  readCachedMemberSignedUp,
+  hasMemberSession,
   readWaitlistContactPhone,
   saveWaitlistContactPhone,
 } from '@/lib/memberRewards';
@@ -27,7 +27,7 @@ export function WaitlistMemberUpsell({
     Boolean(readWaitlistContactPhone()?.length),
   );
 
-  const done = Boolean(signupComplete) || readCachedMemberSignedUp();
+  const done = Boolean(signupComplete) || hasMemberSession();
 
   if (done) {
     return (

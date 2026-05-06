@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
-import { ServiceProductDto, fetchInstallProducts } from '@/lib/catalogApi';
+import { AlertCircle } from 'lucide-react';
+import { ServiceProductDto, fetchInstallProducts, getInstantInstallProducts } from '@/lib/catalogApi';
 
 function formatWon(n: number): string {
   return `${new Intl.NumberFormat('ko-KR').format(n)}원`;
@@ -8,16 +8,14 @@ function formatWon(n: number): string {
 
 /** 설치 상품·요금 참고 안내만 표시합니다. 접수·결제는 매칭 이후 순서에서 진행합니다. */
 export function InstallCatalogCheckout() {
-  const [products, setProducts] = useState<ServiceProductDto[]>([]);
+  const [products, setProducts] = useState<ServiceProductDto[]>(() => getInstantInstallProducts());
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [schedule, setSchedule] = useState<'reservation' | 'same_day'>('reservation');
-  const [productId, setProductId] = useState('');
+  const [productId, setProductId] = useState(() => getInstantInstallProducts()[0]?.id ?? '');
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      setLoading(true);
       setLoadErr(null);
       try {
         const rows = await fetchInstallProducts();
@@ -27,9 +25,9 @@ export function InstallCatalogCheckout() {
           prev && rows.some((r) => r.id === prev) ? prev : (rows[0]?.id ?? ''),
         );
       } catch (e) {
-        if (!cancelled) setLoadErr(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && products.length === 0) {
+          setLoadErr(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
+        }
       }
     })();
     return () => {
@@ -52,11 +50,7 @@ export function InstallCatalogCheckout() {
         </p>
 
         <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-white p-5 shadow-sm">
-          {loading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> 불러오는 중…
-            </div>
-          ) : loadErr ? (
+          {loadErr ? (
             <div className="flex items-start gap-2 text-sm text-rose-700">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{loadErr}</span>

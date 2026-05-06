@@ -8,17 +8,31 @@ import { MemberHeaderActions } from '@/app/components/MemberHeaderActions';
 import { MemberSignupFlowModal } from '@/app/components/MemberSignupFlowModal';
 import { PostSubmitStatusPage } from '@/app/components/PostSubmitStatusPage';
 import { WaitlistMemberUpsell } from '@/app/components/WaitlistMemberUpsell';
-import { readCachedMemberSignedUp } from '@/lib/memberRewards';
+import {
+  fetchMemberDashboard,
+  hasMemberSession,
+  readMemberSession,
+  type MemberDashboardData,
+} from '@/lib/memberRewards';
 import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
 import { InstallCatalogCheckout } from '@/app/components/InstallCatalogCheckout';
 import { apiBaseOriginFromEnv } from '@/lib/apiRequestUrl';
+import { preloadInstallProducts } from '@/lib/catalogApi';
 
 /** 1차 근처 검색 구간 종료까지 경과(초) — 이후 2차(광역) 검색 */
 const MATCH_SWITCH_TO_WIDE_AT = 20;
 /** 웨잇리스트 화면 전환까지 총 경과(초). 서버 매칭 기본 타임아웃과 맞춤 */
 const MATCH_END_AT = 40;
+
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  wall: '벽걸이',
+  stand: '스탠드',
+  two_in_one: '2in1',
+  system: '시스템',
+  unknown: '미확인',
+};
 
 function getCompanyServerUrl(): string {
   const apiBase = apiBaseOriginFromEnv();
@@ -37,8 +51,12 @@ export default function App() {
   const [memberBenefitsOpen, setMemberBenefitsOpen] = useState(false);
   const [memberSignupOpen, setMemberSignupOpen] = useState(false);
   const [signupBookingRef, setSignupBookingRef] = useState<string | undefined>();
-  const [memberSignupDone, setMemberSignupDone] = useState(() => readCachedMemberSignedUp());
+  const [memberSignupDone, setMemberSignupDone] = useState(() => hasMemberSession());
   const [memberSignupEventId, setMemberSignupEventId] = useState(0);
+
+  useEffect(() => {
+    preloadInstallProducts();
+  }, []);
 
   const openSignup = (ref?: string) => {
     setSignupBookingRef(ref);
@@ -103,6 +121,8 @@ export default function App() {
           onGoHome={() => setStep('home')}
           onGoRequest={() => setStep('request')}
           onOpenBenefits={() => setMemberBenefitsOpen(true)}
+          onSignedIn={() => setMemberSignupDone(true)}
+          onSignedOut={() => setMemberSignupDone(false)}
           onViewFaq={() => {
             setStep('home');
             setTimeout(() => {
@@ -661,7 +681,7 @@ function RequestPage({
   onGoMemberDashboard
 }: {
   formData: any;
-  setFormData: (data: any) => void;
+  setFormData: (data: any | ((prev: any) => any)) => void;
   onBack: () => void;
   memberSignupDone: boolean;
   memberSignupEventId: number;
@@ -677,6 +697,10 @@ function RequestPage({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [postSubmitSource, setPostSubmitSource] = useState<'contact' | 'member' | null>(null);
+  const [memberDashboard, setMemberDashboard] = useState<MemberDashboardData | null>(null);
+  const [memberDashboardLoading, setMemberDashboardLoading] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [selectedAssetId, setSelectedAssetId] = useState('');
   const handledSignupEventRef = useRef(0);
 
   useLayoutEffect(() => {
@@ -686,10 +710,28 @@ function RequestPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    const memberSession = readMemberSession();
+    const selectedAsset = memberDashboard?.airconAssets.find((asset) => asset.id === selectedAssetId);
+    const assetMemo = selectedAsset
+      ? [
+          '선택 에어컨',
+          ASSET_TYPE_LABELS[selectedAsset.type] ?? selectedAsset.type,
+          selectedAsset.brand,
+          selectedAsset.modelName,
+          selectedAsset.installedYear ? `${selectedAsset.installedYear}년 설치` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null;
+    const issueText = [String(formData.issue ?? '').trim(), assetMemo].filter(Boolean).join('\n');
     try {
       setSubmitting(true);
       const lead = await submitRequest({
         ...formData,
+        issue: issueText,
+        memberId: memberSession?.memberId,
+        customerPhone: memberSession?.phone,
+        customerName: memberSession?.name,
         submittedAt: new Date().toISOString(),
         matchingTimeoutSeconds: MATCH_END_AT
       });
@@ -735,12 +777,50 @@ function RequestPage({
     }
   }, [memberSignupEventId, submitted, matchingStage]);
 
+  useEffect(() => {
+    const memberSession = readMemberSession();
+    if (!memberSession?.memberId) {
+      setMemberDashboard(null);
+      setSelectedAddressId('');
+      setSelectedAssetId('');
+      return;
+    }
+    let active = true;
+    setMemberDashboardLoading(true);
+    fetchMemberDashboard(memberSession.memberId)
+      .then((next) => {
+        if (!active) return;
+        setMemberDashboard(next);
+        const defaultAddress = next.addresses.find((addr) => addr.isDefault) ?? next.addresses[0];
+        if (defaultAddress) {
+          setSelectedAddressId((prev) => prev || defaultAddress.id);
+          setFormData((prev: any) =>
+            prev.location
+              ? prev
+              : {
+                  ...prev,
+                  location: `${defaultAddress.address} ${defaultAddress.detailAddress ?? ''}`.trim(),
+                },
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setMemberDashboard(null);
+      })
+      .finally(() => {
+        if (active) setMemberDashboardLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [memberSignupDone, memberSignupEventId, setFormData]);
+
   const memberHeaderCallbacks = {
     onOpenBenefits,
     onOpenSignup,
     onOpenManage
   };
-  const isMemberSignedIn = memberSignupDone || readCachedMemberSignedUp();
+  const isMemberSignedIn = memberSignupDone || hasMemberSession();
   const goHomeOrManage = () => {
     if (isMemberSignedIn) onGoMemberDashboard();
     else onBack();
@@ -889,6 +969,73 @@ function RequestPage({
         <p className="mb-8 text-gray-600">방문 지역과 에어컨 상태를 알려 주세요</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {isMemberSignedIn ? (
+            <section className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">회원 저장 정보 사용</p>
+                  <p className="text-xs text-gray-500">주소와 에어컨 정보를 선택하면 접수 내용에 자동 반영됩니다.</p>
+                </div>
+                {memberDashboardLoading ? <span className="text-xs text-blue-600">불러오는 중</span> : null}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select
+                  className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm"
+                  value={selectedAddressId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const addr = memberDashboard?.addresses.find((x) => x.id === id);
+                    setSelectedAddressId(id);
+                    if (addr) {
+                      setFormData({
+                        ...formData,
+                        location: `${addr.address} ${addr.detailAddress ?? ''}`.trim(),
+                      });
+                    }
+                  }}
+                >
+                  <option value="">저장 주소 선택</option>
+                  {(memberDashboard?.addresses ?? []).map((addr) => (
+                    <option key={addr.id} value={addr.id}>
+                      {addr.address}{addr.isDefault ? ' · 기본' : ''}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm"
+                  value={selectedAssetId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const asset = memberDashboard?.airconAssets.find((x) => x.id === id);
+                    setSelectedAssetId(id);
+                    if (asset) {
+                      setFormData({
+                        ...formData,
+                        acType: ASSET_TYPE_LABELS[asset.type] ?? asset.type,
+                      });
+                    }
+                  }}
+                >
+                  <option value="">에어컨 정보 선택</option>
+                  {(memberDashboard?.airconAssets ?? []).map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.brand || '브랜드 미등록'} {asset.modelName || ASSET_TYPE_LABELS[asset.type] || asset.type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {!memberDashboardLoading && memberDashboard && memberDashboard.addresses.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={onGoMemberDashboard}
+                  className="mt-3 text-xs font-medium text-blue-700 underline"
+                >
+                  회원관리에서 주소 먼저 등록하기
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+
           {/* Location */}
           <div>
             <label className="block mb-2">

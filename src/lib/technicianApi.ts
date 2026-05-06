@@ -93,6 +93,7 @@ export interface TechnicianSignupDocument {
 export function registerTechnician(body: {
   name: string;
   phone: string;
+  password: string;
   businessType?: 'individual' | 'sole_business' | 'company';
   businessNumber?: string;
   baseRegion?: string;
@@ -113,7 +114,7 @@ export function registerTechnician(body: {
   });
 }
 
-export function technicianSession(body: { phone: string }): Promise<{
+export function technicianSession(body: { phone: string; password: string }): Promise<{
   technicianId: string;
   name: string;
   baseRegion: string | null;
@@ -122,6 +123,65 @@ export function technicianSession(body: { phone: string }): Promise<{
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+export interface TechnicianDocumentPresignResult {
+  signedUrl: string;
+  token: string;
+  path: string;
+  bucket: string;
+  publicUrl: string | null;
+  expiresInHours: number;
+}
+
+export function presignTechnicianDocumentUpload(body: {
+  documentType: TechnicianSignupDocument['documentType'];
+  mimeType?: string;
+}): Promise<TechnicianDocumentPresignResult> {
+  return readEnvelope('/api/technician/documents/presign', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function uploadTechnicianDocumentFile(
+  documentType: TechnicianSignupDocument['documentType'],
+  file: File,
+): Promise<{ fileUrl: string; path: string; bucket: string }> {
+  const mime = (file.type || 'application/octet-stream').split(';')[0].trim();
+  const presign = await presignTechnicianDocumentUpload({ documentType, mimeType: mime });
+  const put = await fetch(presign.signedUrl, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': mime },
+  });
+  if (!put.ok) throw new Error('서류 업로드에 실패했습니다.');
+  return {
+    fileUrl: presign.publicUrl || `storage://${presign.bucket}/${presign.path}`,
+    path: presign.path,
+    bucket: presign.bucket,
+  };
+}
+
+export interface TechnicianMe {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  workStatus: string;
+  baseRegion: string | null;
+  capabilities: TechnicianSignupCapability[];
+  bankName?: string | null;
+  bankHolder?: string | null;
+  bankAccountMasked?: string | null;
+  bankVerificationStatus?: string | null;
+  bankRejectReason?: string | null;
+  regions?: string[];
+  availability?: string[];
+}
+
+export function fetchTechnicianMe(): Promise<TechnicianMe> {
+  return technicianEnvelope('/api/technician/me', { method: 'GET' });
 }
 
 /** 승인 기사 목록 호출용 간단 타입 — 주문 플로우 고객주문 타입 재사용 */
@@ -277,11 +337,20 @@ export interface TechnicianSettlementRow {
   platformFeeRate: number | null;
   status: string;
   paidAt: string | null;
+  payoutRequestedAt?: string | null;
   createdAt: string;
 }
 
 export function fetchTechnicianSettlements(): Promise<TechnicianSettlementRow[]> {
   return technicianEnvelope('/api/technician/settlements', { method: 'GET' });
+}
+
+export function requestTechnicianSettlementPayout(
+  settlementId: string,
+): Promise<TechnicianSettlementRow> {
+  return technicianEnvelope(`/api/technician/settlements/${encodeURIComponent(settlementId)}/request-payout`, {
+    method: 'POST',
+  });
 }
 
 export interface TechnicianMaterialRow {

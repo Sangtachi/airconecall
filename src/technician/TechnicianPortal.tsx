@@ -10,6 +10,7 @@ import {
 } from 'react-router';
 import {
   createJobExtraQuote,
+  fetchTechnicianMe,
   fetchJobExtraQuotes,
   fetchJobPhotos,
   fetchTechnicianJob,
@@ -18,6 +19,7 @@ import {
   fetchTechnicianSettlements,
   getStoredTechnicianId,
   registerTechnician,
+  requestTechnicianSettlementPayout,
   setStoredTechnicianId,
   technicianAccept,
   technicianComplete,
@@ -26,6 +28,7 @@ import {
   technicianStart,
   uploadJobPhoto,
   uploadJobPhotoFile,
+  uploadTechnicianDocumentFile,
   type TechnicianMaterialRow,
   type TechnicianSettlementRow,
   type TechnicianExtraQuoteRow,
@@ -96,19 +99,36 @@ function TechHome() {
 function TechLogin() {
   const nav = useNavigate();
   const [phone, setPhone] = useState('01099998888');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     try {
-      const r = await technicianSession({ phone });
+      const r = await technicianSession({ phone, password });
       setStoredTechnicianId(r.technicianId);
       nav('/technician/jobs');
     } catch {
       setErr('승인된 기사를 찾을 수 없습니다. 가입·승인 후 다시 시도하세요.');
     }
   }
+
+  const documentFields: Array<{
+    documentType: 'id_card' | 'business_license' | 'insurance';
+    label: string;
+    value: string;
+    setValue: React.Dispatch<React.SetStateAction<string>>;
+  }> = [
+    { documentType: 'id_card', label: '신분증/자격 확인', value: idCardUrl, setValue: setIdCardUrl },
+    {
+      documentType: 'business_license',
+      label: '사업자등록증',
+      value: businessLicenseUrl,
+      setValue: setBusinessLicenseUrl,
+    },
+    { documentType: 'insurance', label: '보험 증빙', value: insuranceUrl, setValue: setInsuranceUrl },
+  ];
 
   return (
     <Shell title="기사 로그인">
@@ -119,6 +139,15 @@ function TechLogin() {
             className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+          />
+        </label>
+        <label className="block text-xs text-slate-600">
+          비밀번호
+          <input
+            className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </label>
         {err ? <p className="text-sm text-red-600">{err}</p> : null}
@@ -133,6 +162,7 @@ function TechLogin() {
 function TechSignup() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [businessType, setBusinessType] = useState<'individual' | 'sole_business' | 'company'>('individual');
   const [businessNumber, setBusinessNumber] = useState('');
   const [baseRegion, setBaseRegion] = useState('');
@@ -153,6 +183,7 @@ function TechSignup() {
   const [idCardUrl, setIdCardUrl] = useState('');
   const [businessLicenseUrl, setBusinessLicenseUrl] = useState('');
   const [insuranceUrl, setInsuranceUrl] = useState('');
+  const [docBusy, setDocBusy] = useState<string | null>(null);
   const [done, setDone] = useState<{ id: string; status: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -188,6 +219,7 @@ function TechSignup() {
       const res = await registerTechnician({
         name,
         phone,
+        password,
         businessType,
         businessNumber: businessNumber || undefined,
         baseRegion: baseRegion || undefined,
@@ -239,6 +271,17 @@ function TechSignup() {
               className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+            />
+          </label>
+          <label className="block text-xs text-slate-600">
+            비밀번호
+            <input
+              required
+              type="password"
+              minLength={5}
+              className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </label>
           <label className="block text-xs text-slate-600">
@@ -339,10 +382,44 @@ function TechSignup() {
             </label>
           </div>
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-xs font-medium text-slate-800">서류 URL (선택, Storage 업로드 후 URL)</p>
-            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="신분증/자격 확인 URL" value={idCardUrl} onChange={(e) => setIdCardUrl(e.target.value)} />
-            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="사업자등록증 URL" value={businessLicenseUrl} onChange={(e) => setBusinessLicenseUrl(e.target.value)} />
-            <input className="w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="보험 증빙 URL" value={insuranceUrl} onChange={(e) => setInsuranceUrl(e.target.value)} />
+            <p className="text-xs font-medium text-slate-800">서류 업로드 또는 URL</p>
+            {documentFields.map(({ documentType, label, value, setValue }) => (
+              <div key={documentType} className="space-y-1 rounded border border-slate-100 bg-slate-50 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-slate-700">{label}</span>
+                  <label className="cursor-pointer rounded bg-white px-2 py-1 text-[11px] text-blue-700 ring-1 ring-slate-200">
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={docBusy === documentType}
+                      onChange={async (ev) => {
+                        const file = ev.target.files?.[0];
+                        ev.target.value = '';
+                        if (!file) return;
+                        setDocBusy(documentType);
+                        setErr(null);
+                        try {
+                          const uploaded = await uploadTechnicianDocumentFile(documentType, file);
+                          setValue(uploaded.fileUrl);
+                        } catch {
+                          setErr('서류 업로드 실패 — Storage 버킷 설정을 확인하거나 URL을 직접 입력해 주세요.');
+                        } finally {
+                          setDocBusy(null);
+                        }
+                      }}
+                    />
+                    {docBusy === documentType ? '업로드 중' : '파일 선택'}
+                  </label>
+                </div>
+                <input
+                  className="w-full rounded border border-slate-200 px-3 py-2 text-sm"
+                  placeholder={`${label} URL`}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                />
+              </div>
+            ))}
           </div>
           {err ? <p className="text-sm text-red-600">{err}</p> : null}
           <button type="submit" className="w-full rounded-lg bg-slate-900 py-3 text-sm text-white">
@@ -434,6 +511,8 @@ function TechJobDetail() {
 
   if (!getStoredTechnicianId()) return <Navigate to="/technician/login" replace />;
   if (!row) return <Shell title="작업 상세"><p className="text-sm">불러오는 중 또는 없음...</p></Shell>;
+  const photoKinds = new Set(photos.map((p) => p.kind));
+  const hasRequiredPhotos = photoKinds.has('before_work') && photoKinds.has('after_work');
 
   return (
     <Shell title="작업 상세">
@@ -478,10 +557,10 @@ function TechJobDetail() {
         <button
           type="button"
           className="rounded-lg bg-indigo-800 py-3 text-xs text-white disabled:opacity-40"
-          disabled={row.orderStatus !== 'working'}
+          disabled={row.orderStatus !== 'working' || !hasRequiredPhotos}
           onClick={() => technicianComplete(id).then(setRow).catch(console.error)}
         >
-          완료
+          {hasRequiredPhotos ? '완료' : '사진 등록 후 완료'}
         </button>
       </div>
 
@@ -652,12 +731,33 @@ function TechJobDetail() {
 }
 
 function Profile() {
+  const [me, setMe] = useState<Awaited<ReturnType<typeof fetchTechnicianMe>> | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!getStoredTechnicianId()) return;
+    fetchTechnicianMe()
+      .then(setMe)
+      .catch(() => setErr('프로필을 불러오지 못했습니다.'));
+  }, []);
+
   return (
     <Shell title="프로필">
       <p className="text-sm text-slate-600">
         저장된 기사 ID:{' '}
         <code className="rounded bg-slate-100 px-2 py-0.5">{getStoredTechnicianId() ?? '미로그인'}</code>
       </p>
+      {err ? <p className="mt-2 text-sm text-red-600">{err}</p> : null}
+      {me ? (
+        <div className="mt-4 space-y-2 rounded-xl bg-white p-4 text-sm shadow ring-1 ring-slate-200">
+          <div><span className="text-slate-500">이름</span> {me.name}</div>
+          <div><span className="text-slate-500">활동 지역</span> {(me.regions?.length ? me.regions.join(', ') : me.baseRegion) || '-'}</div>
+          <div><span className="text-slate-500">가능 시간</span> {me.availability?.join(', ') || '-'}</div>
+          <div><span className="text-slate-500">계좌</span> {me.bankName || '-'} {me.bankHolder || ''} {me.bankAccountMasked || ''}</div>
+          <div><span className="text-slate-500">계좌 검증</span> {me.bankVerificationStatus || 'unsubmitted'}</div>
+          {me.bankRejectReason ? <div className="text-red-600">반려 사유: {me.bankRejectReason}</div> : null}
+        </div>
+      ) : null}
       <Link to="/technician/login" className="mt-3 inline-block text-sm text-blue-600 underline">
         로그인 화면
       </Link>
@@ -668,14 +768,19 @@ function Profile() {
 function SettlementsList() {
   const [rows, setRows] = useState<TechnicianSettlementRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const id = getStoredTechnicianId();
     if (!id) return;
     fetchTechnicianSettlements()
       .then(setRows)
       .catch(() => setErr('정산 목록을 불러오지 못했습니다. 로그인·Supabase 확인.'));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (!getStoredTechnicianId()) return <Navigate to="/technician/login" replace />;
 
@@ -704,6 +809,30 @@ function SettlementsList() {
               상태 {r.status}
               {(r.platformFeeRate != null && Number.isFinite(r.platformFeeRate)) ? ` · 플랫폼 요율 ${r.platformFeeRate}%` : null}
             </div>
+            {r.payoutRequestedAt ? (
+              <div className="mt-1 text-slate-500">지급 요청 {new Date(r.payoutRequestedAt).toLocaleDateString('ko-KR')}</div>
+            ) : null}
+            {['pending', 'held'].includes(r.status) ? (
+              <button
+                type="button"
+                disabled={busyId === r.id}
+                className="mt-3 w-full rounded-lg bg-slate-900 py-2 text-xs font-medium text-white disabled:opacity-50"
+                onClick={async () => {
+                  setBusyId(r.id);
+                  setErr(null);
+                  try {
+                    await requestTechnicianSettlementPayout(r.id);
+                    await load();
+                  } catch (e) {
+                    setErr(e instanceof Error ? e.message : '지급 요청을 저장하지 못했습니다.');
+                  } finally {
+                    setBusyId(null);
+                  }
+                }}
+              >
+                {busyId === r.id ? '요청 중' : '지급 요청'}
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
