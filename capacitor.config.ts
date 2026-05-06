@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.aircone.app',
-  appName: '에어컨콜',
+  appName: '에이씨나우',
   webDir: 'dist',
   android: {
     allowMixedContent: false,

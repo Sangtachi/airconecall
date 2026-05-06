@@ -3,7 +3,7 @@
 export const HOME_BENEFITS_BUTTON = '회원 혜택 · 출동 쿠폰 안내';
 
 export const DIALOG = {
-  title: '에어컨콜 회원 혜택',
+  title: '에이씨나우 회원 혜택',
   lead: '긴급 접수는 지금처럼 바로 가능하고, 회원으로 등록하면 출동·재이용 혜택을 쌓을 수 있어요.',
   bullets: [
     '전화번호 인증 시 첫 긴급출동 할인 쿠폰 안내',
@@ -48,7 +48,7 @@ export const SIGNUP_FLOW = {
   phoneSend: '인증번호 받기',
   phoneVerifyPlaceholder: '6자리 인증번호',
   phoneVerifyBtn: '인증 확인',
-  accountTitle: '에어컨콜 계정 만들기',
+  accountTitle: '에이씨나우 계정 만들기',
   nameLabel: '이름',
   pwLabel: '비밀번호 (8자 이상)',
   pwConfirmLabel: '비밀번호 확인',

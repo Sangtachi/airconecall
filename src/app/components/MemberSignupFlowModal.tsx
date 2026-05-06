@@ -268,7 +268,7 @@ export function MemberSignupFlowModal({ open, onOpenChange, bookingRef, onComple
             <div className="space-y-4 text-left">
               <div className="flex items-center gap-2 text-emerald-800">
                 <Gift className="size-6 shrink-0" />
-                <span className="font-semibold">에어컨콜 회원이 되었어요</span>
+                <span className="font-semibold">에이씨나우 회원이 되었어요</span>
               </div>
               <p className="text-sm leading-relaxed text-gray-700">{POST_SIGNUP.body}</p>
               <ul className="space-y-2 text-sm text-gray-700">

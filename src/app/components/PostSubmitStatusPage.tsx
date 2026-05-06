@@ -34,7 +34,7 @@ export function PostSubmitStatusPage({
         <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-left">
           <h3 className="mb-2 flex items-center gap-2 font-semibold text-gray-900">
             <Sparkles className="h-4 w-4 text-blue-600" />
-            에어컨콜 안내
+            에이씨나우 안내
           </h3>
           <ul className="space-y-1.5 text-sm leading-relaxed text-gray-600">
             <li>1) 접수 완료 후 지역·거리 기준으로 순차 배정됩니다.</li>

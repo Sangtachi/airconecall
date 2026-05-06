@@ -19,6 +19,12 @@ const MATCH_SWITCH_TO_WIDE_AT = 20;
 /** 웨잇리스트 화면 전환까지 총 경과(초). 서버 매칭 기본 타임아웃과 맞춤 */
 const MATCH_END_AT = 40;
 
+function getCompanyServerUrl(): string {
+  const apiBase = String(import.meta.env.VITE_API_BASE_URL ?? '').trim();
+  if (apiBase) return apiBase.replace(/\/?api\/?$/i, '').replace(/\/$/, '');
+  return 'http://127.0.0.1:4000';
+}
+
 export default function App() {
   const [step, setStep] = useState<'home' | 'request' | 'memberDashboard'>('home');
   const [formData, setFormData] = useState({
@@ -309,6 +315,8 @@ function HomePage({
   onOpenSignup: (bookingRef?: string) => void;
   onOpenManage: () => void;
 }) {
+  const companyServerUrl = getCompanyServerUrl();
+
   return (
     <main id="primary" lang="ko" className="min-w-0">
       {/* Hero Section */}
@@ -324,11 +332,11 @@ function HomePage({
         <div className="w-full px-6 py-12">
           <div className="mb-8">
             <div className="mb-6 flex justify-center md:justify-start">
-              <div className="inline-flex rounded-2xl border border-white/65 bg-neutral-50 p-3 shadow-lg shadow-black/15 ring-[0.5px] ring-black/[0.08] md:rounded-[1.35rem] md:p-[0.875rem]">
+              <div className="inline-flex h-[94px] w-[94px] items-center justify-center overflow-hidden rounded-2xl border border-white/65 bg-neutral-50 shadow-lg shadow-black/15 ring-[0.5px] ring-black/[0.08] md:rounded-[1.35rem]">
                 <img
                   src="/branding/icon-mark.png"
-                  alt="에어컨콜"
-                  className="h-14 w-auto max-w-[200px] rounded-lg object-contain sm:h-16 sm:max-w-[220px]"
+                  alt="에이씨나우"
+                  className="h-[132px] w-[132px] max-w-none rounded-lg object-contain"
                 />
               </div>
             </div>
@@ -429,7 +437,7 @@ function HomePage({
       {/* Features */}
       <div className="bg-white">
         <div className="w-full px-6 py-12">
-          <h2 className="text-2xl mb-8 text-center">에어컨콜의 장점</h2>
+          <h2 className="text-2xl mb-8 text-center">에이씨나우의 장점</h2>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
@@ -580,7 +588,7 @@ function HomePage({
       <footer className="bg-slate-900 text-gray-400">
         <div className="w-full px-6 py-8">
           <div className="mb-6">
-            <h3 className="mb-1 text-lg text-white">에어컨콜</h3>
+            <h3 className="mb-1 text-lg text-white">에이씨나우</h3>
             <p className="text-sm text-gray-300">긴급 에어컨 출동·기사 매칭</p>
             <p className="mt-3 text-sm text-gray-300">
               대표자 :{' '}
@@ -606,8 +614,33 @@ function HomePage({
               연중무휴 접수 (출동·매칭은 현장 사정에 따라 달라질 수 있어요)
             </p>
           </div>
+          <div className="mt-6 rounded-3xl border border-gray-800 bg-white/5 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-2xl bg-white p-2">
+                <img
+                  src="/branding/living-bridge.png"
+                  alt="리빙브릿지"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className="text-sm font-semibold text-white">운영 법인 리빙브릿지</p>
+                <p className="text-xs leading-relaxed text-gray-400">
+                  생활을 연결하고, 가치를 더하는 운영 법인
+                </p>
+              </div>
+            </div>
+            <a
+              href={companyServerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-gray-700 px-4 py-3 text-sm font-medium text-gray-100 transition-colors hover:bg-white/10"
+            >
+              회사/운영 서버 바로가기
+            </a>
+          </div>
           <div className="mt-6 border-t border-gray-800 pt-6 text-xs text-gray-500">
-            <p>© 2026 에어컨콜. All rights reserved.</p>
+            <p>© 2026 에이씨나우. All rights reserved.</p>
           </div>
         </div>
       </footer>

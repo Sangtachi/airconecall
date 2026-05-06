@@ -33,7 +33,7 @@ function seoInjectPlugin(siteOrigin: string) {
   const lastmod = new Date().toISOString().slice(0, 10)
 
   return {
-    name: 'aircone-seo',
+    name: 'acnow-seo',
     transformIndexHtml(html: string) {
       return html
         .replace(/%SITE_ORIGIN%/g, siteOrigin)
@@ -55,7 +55,7 @@ function seoInjectPlugin(siteOrigin: string) {
       fs.writeFileSync(
         path.join(dir, 'robots.txt'),
         [
-          '# 에어컨콜',
+          '# 에이씨나우',
           'User-agent: *',
           'Allow: /',
           host ? `Host: ${host}` : '',
@@ -115,8 +115,8 @@ export default defineConfig(({ mode }) => {
       ],
       manifest: {
         id: '/',
-        name: '에어컨콜',
-        short_name: '에어컨콜',
+        name: '에이씨나우',
+        short_name: '에이씨나우',
         description: META_DESCRIPTION.slice(0, 110),
         theme_color: '#2563eb',
         background_color: '#f9fafb',

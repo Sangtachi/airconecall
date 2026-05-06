@@ -9,7 +9,7 @@ type Props = {
 };
 
 export function MemberDashboardPage({ onGoHome, onGoRequest, onOpenBenefits, onViewFaq }: Props) {
-  const [name, setName] = useState('에어컨콜 회원');
+  const [name, setName] = useState('에이씨나우 회원');
   const [phone, setPhone] = useState('010-1234-5678');
   const [marketingSms, setMarketingSms] = useState(true);
 

@@ -23,7 +23,7 @@ export function MemberManageDialog({ open, onOpenChange, onOpenSignup }: Props) 
         <DialogHeader>
           <DialogTitle className="text-left">회원 관리</DialogTitle>
           <DialogDescription className="text-left">
-            에어컨콜 계정 로그인·예약 내역 등은 순차적으로 열립니다.
+            에이씨나우 계정 로그인·예약 내역 등은 순차적으로 열립니다.
           </DialogDescription>
         </DialogHeader>
         {enrolled ? (

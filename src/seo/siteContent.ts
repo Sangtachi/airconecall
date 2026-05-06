@@ -1,5 +1,5 @@
 /** 페이지·FAQ·메타 카피 — SEO 스키마(siteContent)·JSON-LD(schema)와 동기화 유지 */
-export const SITE_NAME = '에어컨콜';
+export const SITE_NAME = '에이씨나우';
 /** 대표자 (표기 순) */
 export const SITE_REPRESENTATIVES = ['최병성', '최우혁'] as const;
 export const SITE_REPRESENTATIVE_LINE = SITE_REPRESENTATIVES.join(', ');
@@ -7,12 +7,13 @@ export const AREA_LABEL = '경기 고양시·파주시·포천시';
 export const REGIONS_DETAIL = ['고양시', '파주시', '포천시'] as const;
 
 export const META_TITLE =
-  `에어컨콜 | 고양·파주·포천 에어컨 설치·청소 예약·당일 · 기사 매칭 · 회원혜택`;
+  `에이씨나우 | 고양·파주·포천 에어컨 설치·청소 예약·당일 · 기사 매칭 · 회원혜택`;
 export const META_DESCRIPTION =
-  `고양시·파주시·포천시 에어컨 설치·청소 예약 및 당일 안내. 당일·예약 요금 확인, 포함 항목(배관·냉매·타공) 안내, 등록 파트너 매칭. 대표자 ${SITE_REPRESENTATIVE_LINE} 운영.`;
+  `고양시·파주시·포천시 에어컨 설치·청소 예약 및 당일 안내. 당일·예약 요금 확인, 포함 항목(배관·냉매·타공) 안내, 등록 파트너 매칭. 리빙브릿지가 운영합니다.`;
 
 export const KEYWORDS_META = [
-  '에어컨콜',
+  '에이씨나우',
+  'ACnow',
   '고양 에어컨설치',
   '파주 에어컨설치',
   '포천 에어컨설치',
@@ -27,7 +28,7 @@ export const KEYWORDS_META = [
 /** AEO용 — 화면 FAQ + FAQPage 스키마에 동일 사용 */
 export const FAQ_ITEMS: ReadonlyArray<{ question: string; answer: string }> = [
   {
-    question: '에어컨콜은 어디 서비스 지역인가요?',
+    question: '에이씨나우는 어디 서비스 지역인가요?',
     answer:
       '경기 고양시, 파주시, 포천시를 우선 안내하며 에어컨 설치·청소 요청 접수 후 등록 파트너 기사님 매칭을 진행합니다. 접수 시간은 안내대로 진행하지만 방문 가능 여부·도착 시각은 현장 상황에 따라 달라질 수 있습니다.',
   },

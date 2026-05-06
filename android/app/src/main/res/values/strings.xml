@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">에어컨콜</string>
-    <string name="title_activity_main">에어컨콜</string>
+    <string name="app_name">에이씨나우</string>
+    <string name="title_activity_main">에이씨나우</string>
     <string name="package_name">com.aircone.app</string>
     <string name="custom_url_scheme">com.aircone.app</string>
 </resources>

@@ -1,4 +1,4 @@
-# 에어컨콜 (Aircone)
+# 에이씨나우 (ACnow)
 
 React + Vite 고객용 모바일 웹/PWA. ([원본 Figma](https://www.figma.com/design/jz40QG3fGlULDCOfXNC8b2/%EC%95%B1-%EB%94%94%EC%9E%90%EC%9D%B8-%EC%9A%94%EC%B2%AD))
 
@@ -19,7 +19,7 @@ npm install
 npm run android:run
 ```
 
-처음 빌드는 Gradle이 무거울 수 있습니다. 에뮬레이터/실기 중 하나가 선택되면 거기에 **에어컨콜 앱이 실행**됩니다.
+처음 빌드는 Gradle이 무거울 수 있습니다. 에뮬레이터/실기 중 하나가 선택되면 거기에 **에이씨나우 앱이 실행**됩니다.
 
 수동 순서와 동일합니다:
 
