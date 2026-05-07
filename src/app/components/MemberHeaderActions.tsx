@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { resolvedBackendUiOrigin } from '@/lib/apiRequestUrl';
 import { hasMemberSession } from '@/lib/memberRewards';
 
 export type MemberHeaderVariant = 'onBlue' | 'onWhite';
@@ -41,8 +42,7 @@ export function MemberHeaderActions({
   const menuBtn = `${iconBtn} ${ring} ${isBlue ? 'text-white hover:bg-white/20' : 'text-gray-700 hover:bg-gray-50'}`;
 
   const handleLogoClick = () => {
-    if (enrolled) onOpenBenefits();
-    else onOpenSignup(signupBookingRef);
+    window.location.href = resolvedBackendUiOrigin();
   };
 
   return (
@@ -51,8 +51,8 @@ export function MemberHeaderActions({
         type="button"
         className={logoBtn}
         onClick={handleLogoClick}
-        aria-label={enrolled ? '회원 혜택 안내 열기' : '회원 가입 안내 열기'}
-        title={enrolled ? '회원 혜택' : '회원 가입'}
+        aria-label="리빙브릿지 회사 홈페이지로 이동"
+        title="리빙브릿지 회사 홈페이지"
       >
         <img
           src="/branding/icon-mark.png"
@@ -90,6 +90,12 @@ export function MemberHeaderActions({
                 onClick={() => onOpenSignup(signupBookingRef)}
               >
                 회원 가입
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => onOpenManage()}
+              >
+                로그인
               </DropdownMenuItem>
             </>
           )}

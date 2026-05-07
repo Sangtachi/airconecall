@@ -355,6 +355,7 @@ export function requestTechnicianSettlementPayout(
 
 export interface TechnicianMaterialRow {
   id: string;
+  sellerId: string | null;
   name: string;
   code: string;
   category: string;
@@ -363,10 +364,70 @@ export interface TechnicianMaterialRow {
   technicianCostAllowance: number | null;
   oemAvailable: boolean;
   supplierName: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  stockQuantity: number;
+  marketStatus: string;
+  deliveryNote: string | null;
+  minOrderQuantity: number;
+  isActive: boolean;
 }
 
 export function fetchTechnicianMaterials(): Promise<TechnicianMaterialRow[]> {
   return technicianEnvelope('/api/technician/materials', { method: 'GET' });
+}
+
+export interface TechnicianMaterialOrderItem {
+  id: string;
+  purchaseOrderId: string;
+  materialId: string | null;
+  sellerId: string | null;
+  name: string;
+  code: string;
+  unit: string;
+  supplierName: string | null;
+  unitPrice: number;
+  quantity: number;
+  amount: number;
+  createdAt: string;
+}
+
+export interface TechnicianMaterialOrderRow {
+  id: string;
+  orderNo: string;
+  technicianId: string;
+  technicianName: string | null;
+  technicianPhone: string | null;
+  sellerId: string | null;
+  sellerName: string | null;
+  status: 'requested' | 'confirmed' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
+  totalAmount: number;
+  deliveryAddress: string;
+  recipientName: string | null;
+  recipientPhone: string | null;
+  requestMemo: string | null;
+  sellerMemo: string | null;
+  adminMemo: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: TechnicianMaterialOrderItem[];
+}
+
+export function fetchTechnicianMaterialOrders(): Promise<TechnicianMaterialOrderRow[]> {
+  return technicianEnvelope('/api/technician/material-orders', { method: 'GET' });
+}
+
+export function createTechnicianMaterialOrder(body: {
+  items: Array<{ materialId: string; quantity: number }>;
+  deliveryAddress?: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  requestMemo?: string;
+}): Promise<TechnicianMaterialOrderRow> {
+  return technicianEnvelope('/api/technician/material-orders', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export interface TechnicianExtraQuoteRow {

@@ -1,9 +1,8 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User, Ticket } from 'lucide-react';
 import { markEmergencyLeadTimeout, submitRequest } from '@/lib/api';
 import { AppShell } from '@/app/components/AppShell';
 import { MemberBenefitsDialog } from '@/app/components/MemberBenefitsDialog';
-import { MemberDashboardPage } from '@/app/components/MemberDashboardPage';
 import { MemberHeaderActions } from '@/app/components/MemberHeaderActions';
 import { MemberSignupFlowModal } from '@/app/components/MemberSignupFlowModal';
 import { PostSubmitStatusPage } from '@/app/components/PostSubmitStatusPage';
@@ -17,9 +16,40 @@ import {
 import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
-import { InstallCatalogCheckout } from '@/app/components/InstallCatalogCheckout';
-import { apiBaseOriginFromEnv } from '@/lib/apiRequestUrl';
+import { resolvedBackendUiOrigin } from '@/lib/apiRequestUrl';
 import { preloadInstallProducts } from '@/lib/catalogApi';
+
+const InstallCatalogCheckout = lazy(() =>
+  import('@/app/components/InstallCatalogCheckout').then((m) => ({ default: m.InstallCatalogCheckout })),
+);
+const MemberDashboardPage = lazy(() =>
+  import('@/app/components/MemberDashboardPage').then((m) => ({ default: m.MemberDashboardPage })),
+);
+
+function partnerAppUrl(): string {
+  const configured = String(import.meta.env.VITE_PARTNER_APP_URL ?? '').trim();
+  if (configured) return configured.replace(/\/$/, '');
+  return 'http://localhost:5174';
+}
+
+function DashFallback() {
+  return (
+    <div className="flex flex-1 items-center justify-center px-6 py-16 text-sm text-slate-600">
+      화면을 불러오는 중…
+    </div>
+  );
+}
+
+function CatalogSectionFallback() {
+  return (
+    <section className="min-h-[220px] bg-slate-50 px-6 py-10" aria-hidden>
+      <div className="mx-auto max-w-xl animate-pulse space-y-4">
+        <div className="h-7 w-56 rounded-lg bg-slate-200/90" />
+        <div className="h-32 rounded-[1.25rem] bg-slate-200/70" />
+      </div>
+    </section>
+  );
+}
 
 /** 1차 근처 검색 구간 종료까지 경과(초) — 이후 2차(광역) 검색 */
 const MATCH_SWITCH_TO_WIDE_AT = 20;
@@ -33,12 +63,6 @@ const ASSET_TYPE_LABELS: Record<string, string> = {
   system: '시스템',
   unknown: '미확인',
 };
-
-function getCompanyServerUrl(): string {
-  const apiBase = apiBaseOriginFromEnv();
-  if (apiBase) return apiBase;
-  return 'http://127.0.0.1:4000';
-}
 
 export default function App() {
   const [step, setStep] = useState<'home' | 'request' | 'memberDashboard'>('home');
@@ -55,7 +79,13 @@ export default function App() {
   const [memberSignupEventId, setMemberSignupEventId] = useState(0);
 
   useEffect(() => {
-    preloadInstallProducts();
+    const w = typeof window !== 'undefined' ? window : undefined;
+    if (!w?.requestIdleCallback) {
+      preloadInstallProducts();
+      return;
+    }
+    const id = w.requestIdleCallback(() => preloadInstallProducts(), { timeout: 2500 });
+    return () => w.cancelIdleCallback(id);
   }, []);
 
   const openSignup = (ref?: string) => {
@@ -89,6 +119,9 @@ export default function App() {
         onComplete={() => {
           setMemberSignupDone(true);
           setMemberSignupEventId((prev) => prev + 1);
+          setMemberSignupOpen(false);
+          setSignupBookingRef(undefined);
+          setStep('memberDashboard');
         }}
       />
     </>
@@ -117,20 +150,22 @@ export default function App() {
           onGoMemberDashboard={() => setStep('memberDashboard')}
         />
       ) : (
-        <MemberDashboardPage
-          onGoHome={() => setStep('home')}
-          onGoRequest={() => setStep('request')}
-          onOpenBenefits={() => setMemberBenefitsOpen(true)}
-          onSignedIn={() => setMemberSignupDone(true)}
-          onSignedOut={() => setMemberSignupDone(false)}
-          onViewFaq={() => {
-            setStep('home');
-            setTimeout(() => {
-              const faq = document.getElementById('faq');
-              if (faq) faq.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 60);
-          }}
-        />
+        <Suspense fallback={<DashFallback />}>
+          <MemberDashboardPage
+            onGoHome={() => setStep('home')}
+            onGoRequest={() => setStep('request')}
+            onOpenBenefits={() => setMemberBenefitsOpen(true)}
+            onSignedIn={() => setMemberSignupDone(true)}
+            onSignedOut={() => setMemberSignupDone(false)}
+            onViewFaq={() => {
+              setStep('home');
+              setTimeout(() => {
+                const faq = document.getElementById('faq');
+                if (faq) faq.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 60);
+            }}
+          />
+        </Suspense>
       )}
     </AppShell>
   );
@@ -165,7 +200,7 @@ function MatchingScreen({
       {/* Header — 스크롤 시에도 상단 고정 */}
       <div className="sticky top-0 z-20 flex-shrink-0 border-b border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm md:px-6 md:py-4">
         <div className="flex w-full items-center justify-between gap-3">
-          <h1 className="text-base font-semibold md:text-lg">기사님 찾는 중</h1>
+          <h1 className="text-base font-semibold md:text-lg">파트너 기사 찾는 중</h1>
           <div className="flex shrink-0 items-center gap-3">
             <MemberHeaderActions
               variant="onWhite"
@@ -265,12 +300,12 @@ function MatchingScreen({
           <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-gray-200/90 md:hidden" aria-hidden />
 
           <h2 className="mb-2 text-lg font-semibold leading-snug text-gray-900 md:text-xl">
-            {stage} 거리 내 기사님을 찾고 있습니다
+            {stage} 거리 내 파트너 기사님을 찾고 있습니다
           </h2>
           <p className="mb-3 flex items-start gap-2 text-xs text-gray-600 md:text-sm">
             <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
             <span>
-              등록된 기사님만 연결합니다.
+              등록 파트너 기사님만 연결합니다.
               {stage === '15분'
                 ? ' 주변 가능 인력을 확인하는 중이에요.'
                 : ' 조금만 기다려 주세요.'}
@@ -336,7 +371,11 @@ function HomePage({
   onOpenSignup: (bookingRef?: string) => void;
   onOpenManage: () => void;
 }) {
-  const companyServerUrl = getCompanyServerUrl();
+  const backendUiOrigin = resolvedBackendUiOrigin();
+  const showBackendLink =
+    typeof window !== 'undefined' &&
+    Boolean(backendUiOrigin) &&
+    backendUiOrigin.replace(/\/$/, '') !== window.location.origin.replace(/\/$/, '');
 
   return (
     <main id="primary" lang="ko" className="min-w-0">
@@ -366,7 +405,7 @@ function HomePage({
               <span className="text-sm">고양·파주·포천 접수 가능</span>
             </div>
             <h1 id="hero-heading" className="text-3xl mb-4">
-              긴급 기사 매칭부터<br />
+              긴급 파트너 기사 매칭부터<br />
               설치·청소 예약까지
             </h1>
             <p className="text-blue-100 text-lg">
@@ -379,7 +418,7 @@ function HomePage({
             onClick={onRequestClick}
             className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/25 transition-colors hover:bg-blue-50"
           >
-            <span className="text-lg">긴급 기사 매칭</span>
+            <span className="text-lg">긴급 파트너 기사 매칭</span>
             <ArrowRight className="w-5 h-5" />
           </button>
 
@@ -400,7 +439,9 @@ function HomePage({
         </div>
       </div>
 
-      <InstallCatalogCheckout />
+      <Suspense fallback={<CatalogSectionFallback />}>
+        <InstallCatalogCheckout />
+      </Suspense>
 
       {/* How It Works */}
       <div className="w-full px-6 py-12">
@@ -434,7 +475,7 @@ function HomePage({
               3
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">기사님 매칭</h3>
+              <h3 className="mb-1">파트너 기사 매칭</h3>
               <p className="text-gray-600">
                 가능한 분께 순서대로 연결합니다. (수동 배정으로 시간이 걸릴 수 있어요)
               </p>
@@ -473,7 +514,7 @@ function HomePage({
               <Shield className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
               <h3 className="mb-2 font-semibold text-gray-900">검증 파트너</h3>
               <p className="text-sm leading-snug text-gray-500">
-                사전 등록된<br />기사님만 연결
+                사전 등록된<br />파트너 기사만 연결
               </p>
             </div>
 
@@ -588,7 +629,7 @@ function HomePage({
             onClick={onRequestClick}
             className="w-full rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/30 transition-colors hover:bg-blue-50"
           >
-            긴급 기사 매칭
+            긴급 파트너 기사 매칭
           </button>
         </div>
       </div>
@@ -610,7 +651,7 @@ function HomePage({
         <div className="w-full px-6 py-8">
           <div className="mb-6">
             <h3 className="mb-1 text-lg text-white">에이씨나우</h3>
-            <p className="text-sm text-gray-300">긴급 에어컨 출동·기사 매칭</p>
+            <p className="text-sm text-gray-300">긴급 에어컨 출동·파트너 기사 매칭</p>
             <p className="mt-3 text-sm text-gray-300">
               대표자 :{' '}
               <span className="text-white">최병성</span>
@@ -627,7 +668,7 @@ function HomePage({
             <p>
               <span className="text-gray-500">대상</span>
               <br />
-              가정용 벽걸이·스탠드·2in1 긴급 점검·수리
+              가정용 벽걸이·스탠드·2in1 설치·청소·긴급 방문 접수
             </p>
             <p>
               <span className="text-gray-500">운영</span>
@@ -651,14 +692,26 @@ function HomePage({
                 </p>
               </div>
             </div>
-            <a
-              href={companyServerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-gray-700 px-4 py-3 text-sm font-medium text-gray-100 transition-colors hover:bg-white/10"
-            >
-              회사/운영 서버 바로가기
-            </a>
+            <div className="mt-3 grid gap-2">
+              {showBackendLink ? (
+                <a
+                  href={backendUiOrigin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-gray-700 px-4 py-3 text-sm font-medium text-gray-100 transition-colors hover:bg-white/10"
+                >
+                  운영 서버 로그인
+                </a>
+              ) : null}
+              <a
+                href={partnerAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-blue-400/80 bg-blue-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-400"
+              >
+                ACNow 파트너 기사 로그인
+              </a>
+            </div>
           </div>
           <div className="mt-6 border-t border-gray-800 pt-6 text-xs text-gray-500">
             <p>© 2026 에이씨나우. All rights reserved.</p>
@@ -923,7 +976,7 @@ function RequestPage({
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <Shield className="w-5 h-5 text-blue-600" />
-              <span>등록 기사님 순서로 배정</span>
+              <span>등록 파트너 기사님 순서로 배정</span>
             </div>
           </div>
 
@@ -965,7 +1018,7 @@ function RequestPage({
 
       {/* Form */}
       <div className="w-full flex-1 px-6 py-8">
-        <h1 className="text-2xl mb-2">긴급 기사 매칭</h1>
+        <h1 className="text-2xl mb-2">긴급 파트너 기사 매칭</h1>
         <p className="mb-8 text-gray-600">방문 지역과 에어컨 상태를 알려 주세요</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -1081,7 +1134,7 @@ function RequestPage({
 
           {/* Issue */}
           <div>
-            <label className="block mb-2">증상 (선택)</label>
+            <label className="block mb-2">요청·현장 안내 (선택)</label>
             <textarea
               className="w-full resize-none rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
               rows={4}

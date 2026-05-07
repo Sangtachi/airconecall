@@ -84,7 +84,7 @@ export function buildSchemaOrgGraph(siteOriginRaw: string) {
         description: META_DESCRIPTION,
         potentialAction: {
           '@type': 'InteractAction',
-          name: '긴급 기사 접수',
+          name: '긴급 파트너 기사 접수',
           target: `${base}/`,
         },
       },

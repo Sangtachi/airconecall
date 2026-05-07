@@ -9,12 +9,14 @@ import {
   useParams,
 } from 'react-router';
 import {
+  createTechnicianMaterialOrder,
   createJobExtraQuote,
   fetchTechnicianMe,
   fetchJobExtraQuotes,
   fetchJobPhotos,
   fetchTechnicianJob,
   fetchTechnicianJobs,
+  fetchTechnicianMaterialOrders,
   fetchTechnicianMaterials,
   fetchTechnicianSettlements,
   getStoredTechnicianId,
@@ -29,6 +31,7 @@ import {
   uploadJobPhoto,
   uploadJobPhotoFile,
   uploadTechnicianDocumentFile,
+  type TechnicianMaterialOrderRow,
   type TechnicianMaterialRow,
   type TechnicianSettlementRow,
   type TechnicianExtraQuoteRow,
@@ -74,7 +77,10 @@ function TechHome() {
           정산
         </Link>
         <Link className="rounded-lg bg-white px-4 py-3 text-sm shadow ring-1 ring-slate-200" to="/technician/materials">
-          자재
+          자재 구매
+        </Link>
+        <Link className="rounded-lg bg-white px-4 py-3 text-sm shadow ring-1 ring-slate-200" to="/technician/material-orders">
+          자재 구매내역
         </Link>
         <Link className="rounded-lg bg-white px-4 py-3 text-sm shadow ring-1 ring-slate-200" to="/technician/profile">
           프로필
@@ -113,22 +119,6 @@ function TechLogin() {
       setErr('승인된 기사를 찾을 수 없습니다. 가입·승인 후 다시 시도하세요.');
     }
   }
-
-  const documentFields: Array<{
-    documentType: 'id_card' | 'business_license' | 'insurance';
-    label: string;
-    value: string;
-    setValue: React.Dispatch<React.SetStateAction<string>>;
-  }> = [
-    { documentType: 'id_card', label: '신분증/자격 확인', value: idCardUrl, setValue: setIdCardUrl },
-    {
-      documentType: 'business_license',
-      label: '사업자등록증',
-      value: businessLicenseUrl,
-      setValue: setBusinessLicenseUrl,
-    },
-    { documentType: 'insurance', label: '보험 증빙', value: insuranceUrl, setValue: setInsuranceUrl },
-  ];
 
   return (
     <Shell title="기사 로그인">
@@ -186,6 +176,22 @@ function TechSignup() {
   const [docBusy, setDocBusy] = useState<string | null>(null);
   const [done, setDone] = useState<{ id: string; status: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const documentFields: Array<{
+    documentType: 'id_card' | 'business_license' | 'insurance';
+    label: string;
+    value: string;
+    setValue: React.Dispatch<React.SetStateAction<string>>;
+  }> = [
+    { documentType: 'id_card', label: '신분증/자격 확인', value: idCardUrl, setValue: setIdCardUrl },
+    {
+      documentType: 'business_license',
+      label: '사업자등록증',
+      value: businessLicenseUrl,
+      setValue: setBusinessLicenseUrl,
+    },
+    { documentType: 'insurance', label: '보험 증빙', value: insuranceUrl, setValue: setInsuranceUrl },
+  ];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -840,44 +846,223 @@ function SettlementsList() {
   );
 }
 
+function won(value: number | null | undefined) {
+  if (value == null) return '-';
+  return `₩${value.toLocaleString?.() ?? value}`;
+}
+
+function materialOrderStatusLabel(status: TechnicianMaterialOrderRow['status']) {
+  return {
+    requested: '요청',
+    confirmed: '확인',
+    preparing: '준비중',
+    shipped: '배송중',
+    delivered: '완료',
+    cancelled: '취소',
+  }[status] || status;
+}
+
 function MaterialsList() {
   const [rows, setRows] = useState<TechnicianMaterialRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [requestMemo, setRequestMemo] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const id = getStoredTechnicianId();
     if (!id) return;
     fetchTechnicianMaterials()
-      .then(setRows)
+      .then((items) => {
+        setRows(items);
+        setQuantities((prev) => {
+          const next = { ...prev };
+          items.forEach((m) => {
+            if (!next[m.id]) next[m.id] = Math.max(1, m.minOrderQuantity || 1);
+          });
+          return next;
+        });
+      })
       .catch(() => setErr('자재 목록을 불러오지 못했습니다.'));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (!getStoredTechnicianId()) return <Navigate to="/technician/login" replace />;
+
+  return (
+    <Shell title="자재 구매">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Link to="/technician" className="text-xs text-blue-700 underline">
+          포털 홈
+        </Link>
+        <Link to="/technician/material-orders" className="text-xs text-blue-700 underline">
+          구매내역
+        </Link>
+      </div>
+      <div className="mb-4 space-y-2 rounded-xl bg-white p-3 shadow ring-1 ring-slate-200">
+        <label className="block text-xs text-slate-600">
+          배송지 또는 수령 장소
+          <input
+            className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+            value={deliveryAddress}
+            onChange={(e) => setDeliveryAddress(e.target.value)}
+            placeholder="예: 경기 포천시 현장 / 사무실 수령"
+          />
+        </label>
+        <label className="block text-xs text-slate-600">
+          요청 메모
+          <input
+            className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
+            value={requestMemo}
+            onChange={(e) => setRequestMemo(e.target.value)}
+            placeholder="희망 출고일, 연락 가능 시간"
+          />
+        </label>
+      </div>
+      {done ? <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700 ring-1 ring-emerald-200">{done}</p> : null}
+      {err ? <p className="text-sm text-red-600">{err}</p> : null}
+      {rows?.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-500">
+          구매 가능한 자재가 없습니다. 판매자가 재고와 판매 상태를 확인해야 합니다.
+        </p>
+      ) : null}
+      <ul className="space-y-3">
+        {(rows ?? []).map((m) => (
+          <li key={m.id} className="overflow-hidden rounded-xl bg-white text-xs shadow ring-1 ring-slate-200">
+            {m.imageUrl ? (
+              <img src={m.imageUrl} alt="" className="h-36 w-full object-cover" />
+            ) : (
+              <div className="flex h-24 items-center justify-center bg-slate-100 text-slate-400">
+                {m.code}
+              </div>
+            )}
+            <div className="space-y-2 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold">{m.name}</div>
+                  <div className="text-slate-500">{m.supplierName || '판매자 미지정'} · {m.category}</div>
+                </div>
+                <div className="shrink-0 rounded-full bg-blue-50 px-2 py-1 font-semibold text-blue-700">
+                  {won(m.customerPrice)}
+                </div>
+              </div>
+              {m.description ? <p className="leading-relaxed text-slate-600">{m.description}</p> : null}
+              <div className="grid grid-cols-3 gap-2 text-slate-600">
+                <div className="rounded bg-slate-50 px-2 py-1">단위 {m.unit}</div>
+                <div className="rounded bg-slate-50 px-2 py-1">재고 {m.stockQuantity}</div>
+                <div className="rounded bg-slate-50 px-2 py-1">최소 {m.minOrderQuantity}</div>
+              </div>
+              {m.deliveryNote ? <div className="rounded bg-slate-50 px-2 py-2 text-slate-600">{m.deliveryNote}</div> : null}
+              {m.oemAvailable ? <div className="text-emerald-700">OEM 가능</div> : null}
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={m.minOrderQuantity || 1}
+                  max={m.stockQuantity}
+                  className="w-24 rounded border border-slate-200 px-2 py-2 text-sm"
+                  value={quantities[m.id] ?? Math.max(1, m.minOrderQuantity || 1)}
+                  onChange={(e) =>
+                    setQuantities((prev) => ({
+                      ...prev,
+                      [m.id]: Math.max(m.minOrderQuantity || 1, Math.floor(Number(e.target.value) || 1)),
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  disabled={busyId === m.id || m.customerPrice == null || m.stockQuantity < (m.minOrderQuantity || 1)}
+                  className="flex-1 rounded-lg bg-slate-900 py-2 text-xs font-medium text-white disabled:opacity-40"
+                  onClick={async () => {
+                    setBusyId(m.id);
+                    setErr(null);
+                    setDone(null);
+                    try {
+                      const quantity = Math.min(
+                        m.stockQuantity,
+                        Math.max(m.minOrderQuantity || 1, quantities[m.id] ?? m.minOrderQuantity ?? 1),
+                      );
+                      const order = await createTechnicianMaterialOrder({
+                        items: [{ materialId: m.id, quantity }],
+                        deliveryAddress: deliveryAddress.trim() || undefined,
+                        requestMemo: requestMemo.trim() || undefined,
+                      });
+                      setDone(`${order.orderNo} 구매요청이 저장됐습니다.`);
+                      await load();
+                    } catch (e) {
+                      setErr(e instanceof Error ? e.message : '구매요청을 저장하지 못했습니다.');
+                    } finally {
+                      setBusyId(null);
+                    }
+                  }}
+                >
+                  {busyId === m.id ? '요청 중' : '구매요청'}
+                </button>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Shell>
+  );
+}
+
+function MaterialOrdersList() {
+  const [rows, setRows] = useState<TechnicianMaterialOrderRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!getStoredTechnicianId()) return;
+    fetchTechnicianMaterialOrders()
+      .then(setRows)
+      .catch(() => setErr('구매내역을 불러오지 못했습니다.'));
   }, []);
 
   if (!getStoredTechnicianId()) return <Navigate to="/technician/login" replace />;
 
   return (
-    <Shell title="자재">
-      <Link to="/technician" className="mb-3 inline-block text-xs text-blue-700 underline">
-        포털 홈
-      </Link>
+    <Shell title="자재 구매내역">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Link to="/technician" className="text-xs text-blue-700 underline">
+          포털 홈
+        </Link>
+        <Link to="/technician/materials" className="text-xs text-blue-700 underline">
+          자재 구매
+        </Link>
+      </div>
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
       {rows?.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">
-          등록된 자재 없음 — Supabase 에 extras_materials_dispatch.sql 적용 후 materials 행을 넣어 주세요.
-        </p>
+        <p className="py-8 text-center text-sm text-slate-500">아직 자재 구매요청이 없습니다.</p>
       ) : null}
-      <ul className="space-y-2">
-        {(rows ?? []).map((m) => (
-          <li key={m.id} className="rounded-lg bg-white p-3 text-xs shadow ring-1 ring-slate-200">
-            <div className="font-semibold">{m.name}</div>
-            <div className="text-slate-600">
-              코드 {m.code} · 분류 {m.category} · 단위 {m.unit}
+      <ul className="space-y-3">
+        {(rows ?? []).map((order) => (
+          <li key={order.id} className="rounded-xl bg-white p-4 text-xs shadow ring-1 ring-slate-200">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">{order.orderNo}</div>
+                <div className="mt-1 text-slate-500">{order.sellerName || '판매자 미지정'}</div>
+              </div>
+              <span className="rounded-full bg-blue-50 px-2 py-1 font-semibold text-blue-700">
+                {materialOrderStatusLabel(order.status)}
+              </span>
             </div>
-            {m.customerPrice != null ? (
-              <div className="text-slate-500">고객가 ₩{m.customerPrice.toLocaleString?.() ?? m.customerPrice}</div>
-            ) : (
-              <div className="text-slate-400">고객가 미정</div>
-            )}
-            {m.oemAvailable ? <div className="text-emerald-700">OEM 가능</div> : null}
+            <ul className="mt-3 space-y-1 text-slate-700">
+              {order.items.map((item) => (
+                <li key={item.id} className="flex justify-between gap-2">
+                  <span>{item.name} × {item.quantity}</span>
+                  <span>{won(item.amount)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 border-t border-slate-100 pt-3 font-semibold">
+              합계 {won(order.totalAmount)}
+            </div>
+            {order.deliveryAddress ? <div className="mt-2 text-slate-500">배송지 {order.deliveryAddress}</div> : null}
+            {order.sellerMemo ? <div className="mt-2 rounded bg-slate-50 px-2 py-2 text-slate-600">판매자 메모: {order.sellerMemo}</div> : null}
           </li>
         ))}
       </ul>
@@ -895,6 +1080,7 @@ export function TechnicianPortal() {
       <Route path="jobs/:jobId" element={<TechJobDetail />} />
       <Route path="settlements" element={<SettlementsList />} />
       <Route path="materials" element={<MaterialsList />} />
+      <Route path="material-orders" element={<MaterialOrdersList />} />
       <Route path="profile" element={<Profile />} />
       <Route path="*" element={<Navigate to="/technician" replace />} />
     </Routes>

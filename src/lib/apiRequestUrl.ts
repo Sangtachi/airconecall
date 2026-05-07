@@ -49,6 +49,20 @@ export function apiBaseOriginFromEnv(): string {
   return normalizeApiBaseUrl((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '');
 }
 
+/**
+ * 푸터 등에서 백엔드(별도 호스트)로 안내할 때. 하드코딩 127.0.0.1 지양 · `apiRequestUrl` 과 동일한 origin 규칙.
+ * 상대 경로만 쓰는 프로덕션(웹/API 동일 호스트)에서는 SPA origin 과 같아질 수 있음 → UI에서 버튼 숨김 권장.
+ */
+export function resolvedBackendUiOrigin(): string {
+  const base = apiBaseOriginFromEnv();
+  if (base.length > 0) return base;
+  if (typeof window !== 'undefined' && import.meta.env.DEV && loopbackFrontendHost(window.location.hostname)) {
+    return devBootstrapNestOrigin();
+  }
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+}
+
 export function apiRequestUrl(pathWithLeadingSlash: string): string {
   const p = pathWithLeadingSlash.startsWith('/') ? pathWithLeadingSlash : `/${pathWithLeadingSlash}`;
   const base = apiBaseOriginFromEnv();

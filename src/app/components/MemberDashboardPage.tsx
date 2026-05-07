@@ -147,6 +147,11 @@ function assetPayload(form: AssetForm): AirconAssetPayload {
   };
 }
 
+function memberDisplayName(name?: string | null): string {
+  const base = name?.trim() || '회원';
+  return base.endsWith('회원님') ? base : `${base} 회원님`;
+}
+
 export function MemberDashboardPage({
   onGoHome,
   onGoRequest,
@@ -340,7 +345,7 @@ export function MemberDashboardPage({
             <ShieldCheck className="h-4 w-4" />
             회원 관리
           </p>
-          <h1 className="text-2xl font-semibold">안녕하세요, {member?.name ?? session.name}님</h1>
+          <h1 className="text-2xl font-semibold">안녕하세요, {memberDisplayName(member?.name ?? session.name)}</h1>
           <p className="mt-2 text-sm text-blue-100">
             주소, 에어컨 정보, 문의, 쿠폰과 리워드를 회원 계정 기준으로 관리합니다.
           </p>
