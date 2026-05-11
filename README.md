@@ -2,6 +2,8 @@
 
 React + Vite 고객용 모바일 웹/PWA. ([원본 Figma](https://www.figma.com/design/jz40QG3fGlULDCOfXNC8b2/%EC%95%B1-%EB%94%94%EC%9E%90%EC%9D%B8-%EC%9A%94%EC%B2%AD))
 
+**모노레포 운영·환경 변수·플로우 통합 문서**: [`../doc/OPERATIONS.md`](../doc/OPERATIONS.md)
+
 ## 앱처럼 보려면 (중요)
 
 `npm run dev`로 보면 **크롬 탭이라 주소줄이 있어서 웹처럼** 보입니다. “진짜 앱 느낌”으로 보려면 아래 둘 중 하나를 쓰면 됩니다.
